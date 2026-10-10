@@ -235,8 +235,7 @@
         text('target', 'Meta', k.target, { type: 'number', step: 'any' }) +
         text('unit', 'Unidade de medida', k.unit, { placeholder: 'pts, %, clientes…' }) +
         select('direction', 'Melhor quando', k.direction, [['up', 'Maior é melhor'], ['down', 'Menor é melhor']]) +
-        select('trend', 'Tendência', k.trend || 'auto', [['auto', 'Automática (pelo histórico)'], ['up', 'Subindo'], ['flat', 'Estável'], ['down', 'Caindo']], { full: true }) +
-        text('history', 'Histórico de medições', (k.history || []).join(', '), { full: true, placeholder: '40, 45, 50, 55', hint: 'Valores em ordem cronológica, separados por vírgula (decimais com ponto). Alimenta o mini gráfico e a tendência automática.' }) +
+        text('history', 'Histórico de medições', (k.history || []).join(', '), { full: true, placeholder: '40, 45, 50, 55', hint: 'Valores em ordem cronológica, separados por vírgula (decimais com ponto). Alimenta o mini gráfico.' }) +
         section('Vínculo estratégico') +
         select('objectiveId', 'Objetivo', k.objectiveId, objectiveOpts(true)) +
         select('krId', 'Key Result', k.krId, krOpts(k.objectiveId)) +

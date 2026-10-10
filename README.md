@@ -27,7 +27,8 @@ python -m http.server 5178
 - **Sincronização indicador → KR**: cada KR pode ter um indicador de origem. O valor atual do KR passa a vir desse indicador e o status se ajusta sozinho (meta atingida = concluído). Os botões −/+ do KR registram a medição no indicador.
 - **Progresso do KR**: `(atual − inicial) ÷ (meta − inicial)`, limitado a 0–100%. KR concluído conta 100%.
 - **Progresso do objetivo**: média simples dos seus KRs. **Geral**: média dos objetivos.
-- **Ritmo esperado**: fração do ciclo já decorrida (marcador vertical nas barras).
+- **Ritmo esperado**: fração do ciclo já decorrida; base do selo de saúde do dashboard.
+- **MVV**: o texto oficial fica em `OFFICIAL_MVV` (`assets/js/store.js`). Para alterar, edite ali e incremente `MVV_VERSION`.
 - **Saúde**: "No ritmo", "Atenção" ou "Fora do ritmo", comparando o progresso com o ritmo esperado e os KRs em risco.
 - **Plano de ação com checklist**: o progresso vem das etapas marcadas.
 

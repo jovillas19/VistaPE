@@ -216,15 +216,6 @@
       (o.hideVal ? '' : '<span class="val num">' + pct(f) + '</span>') + '</div>';
   }
 
-  /** Indicador de tendência; verde/vermelho conforme a direção desejada do KPI. */
-  function trendTag(k) {
-    const t = S.kpiTrend(k);
-    const good = (t === 'up' && k.direction !== 'down') || (t === 'down' && k.direction === 'down');
-    const cls = t === 'flat' ? 'flat' : good ? 'good' : 'bad';
-    const label = { up: 'Subindo', down: 'Caindo', flat: 'Estável' }[t];
-    return '<span class="trend ' + cls + '">' + icon(t, 14) + ' ' + label + '</span>';
-  }
-
   /** Estado vazio com ícone, título, texto e ação opcional. */
   function empty(ic, title, text, actionHtml) {
     return '<div class="empty"><div class="ico">' + icon(ic, 24) + '</div><h4>' + esc(title) + '</h4><p>' + esc(text) + '</p>' + (actionHtml || '') + '</div>';
@@ -248,29 +239,6 @@
       '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="rgba(255,255,255,.14)" stroke-width="' + stroke + '"/>' +
       '<circle cx="' + size / 2 + '" cy="' + size / 2 + '" r="' + r + '" fill="none" stroke="url(#' + gid + ')" stroke-width="' + stroke + '" stroke-linecap="round" ' +
       'stroke-dasharray="' + (c * f).toFixed(2) + ' ' + c.toFixed(2) + '" transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/></svg>';
-  }
-
-  /**
-   * Donut de distribuição.
-   * @param {Array<{value:number,color:string}>} parts
-   * @param {number} size
-   * @param {number} stroke
-   */
-  function donut(parts, size, stroke) {
-    const total = parts.reduce((a, p) => a + p.value, 0);
-    const r = (size - stroke) / 2, c = 2 * Math.PI * r, cx = size / 2;
-    let offset = 0;
-    // pequeno espaço entre segmentos melhora a leitura (2px de "gap")
-    const gap = parts.filter((p) => p.value > 0).length > 1 ? 2 : 0;
-    const segs = parts.filter((p) => p.value > 0).map((p) => {
-      const len = (p.value / total) * c;
-      const s = '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" style="stroke:' + p.color + '" stroke-width="' + stroke + '" ' +
-        'stroke-dasharray="' + Math.max(len - gap, 0.5).toFixed(2) + ' ' + c.toFixed(2) + '" stroke-dashoffset="' + (-offset).toFixed(2) + '" transform="rotate(-90 ' + cx + ' ' + cx + ')"/>';
-      offset += len;
-      return s;
-    }).join('');
-    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '" aria-hidden="true">' +
-      '<circle cx="' + cx + '" cy="' + cx + '" r="' + r + '" fill="none" style="stroke:var(--surface-3)" stroke-width="' + stroke + '"/>' + (total ? segs : '') + '</svg>';
   }
 
   /**
@@ -480,7 +448,7 @@
   window.UI = {
     esc, icon, logoMark, fmtDate, fmtNum, fmtValue, isMoney, pct, relDays, initials,
     statusBadge, priorityBadge, statusSelect, person, dateTag, progress,
-    trendTag, empty, ring, donut, sparkline,
+    empty, ring, sparkline,
     openDrawer, closeDrawer, openModal, closeModal, confirmDelete, toast,
     get drawerOpen() { return !!drawerEl; },
   };

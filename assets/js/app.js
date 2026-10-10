@@ -61,14 +61,13 @@
       '<aside class="sidebar" id="sidebar" aria-label="Navegação principal">' +
       '<a class="brand" href="#dashboard" aria-label="VISTA studios, início"><span class="brand-mark">' + U.logoMark(22) + '</span>' +
       '<span class="brand-name"><b>VISTA</b><span>studios</span></span></a>' +
-      '<div class="nav-label">Gestão estratégica</div><nav class="nav" id="nav"></nav>' +
-      '<div class="nav-label" style="margin-top:14px">Sistema</div><nav class="nav" id="nav-sys"></nav>' +
+      '<nav class="nav" id="nav"></nav>' +
+      '<nav class="nav nav-sys" id="nav-sys"></nav>' +
       '<div class="cycle-card" id="cycle-card"></div></aside>' +
       '<div class="main"><header class="topbar">' +
       '<button class="icon-btn menu-btn" data-act="toggle-nav" aria-label="Abrir menu">' + ic('menu', 20) + '</button>' +
-      '<div class="crumb"><span class="eyebrow" id="crumb-eyebrow"></span><h1 id="crumb-title"></h1></div>' +
+      '<div class="crumb"><h1 id="crumb-title"></h1></div>' +
       '<span class="spacer"></span>' +
-      '<span class="save-state" id="save-state"></span>' +
       '<button class="icon-btn outline" data-act="toggle-theme" id="theme-btn" aria-label="Alternar tema claro/escuro"></button>' +
       '<div class="dropdown" id="new-dd"><button class="btn btn-primary" data-act="toggle-new" aria-haspopup="menu" aria-expanded="false">' + ic('plus', 16) + '<span class="btn-label">Novo</span></button>' +
       '<div class="dropdown-menu" role="menu" hidden>' +
@@ -80,29 +79,23 @@
       '<main class="content" id="content" tabindex="-1"></main></div>';
   }
 
-  /** Atualiza partes dinâmicas do shell (contadores, ciclo, título, tema). */
+  /** Atualiza partes dinâmicas do shell (alerta de atrasos, ciclo, título, tema). */
   function renderChrome() {
     const s = S.state;
     const overdue = s.actions.filter(S.isOverdue).length;
-    const counts = { okrs: s.krs.length, indicadores: s.kpis.length };
     document.getElementById('nav').innerHTML = NAV.map((n) =>
       '<a href="#' + n.id + '" class="' + (route === n.id ? 'active' : '') + '"' + (route === n.id ? ' aria-current="page"' : '') + '>' + ic(n.icon, 18) + '<span>' + n.label + '</span>' +
-      (n.id === 'planos' && overdue ? '<span class="dot-alert" title="' + overdue + ' plano(s) atrasado(s)">' + overdue + '</span>' : counts[n.id] != null ? '<span class="count">' + counts[n.id] + '</span>' : '') + '</a>').join('');
+      (n.id === 'planos' && overdue ? '<span class="dot-alert" title="' + overdue + ' plano(s) atrasado(s)">' + overdue + '</span>' : '') + '</a>').join('');
     document.getElementById('nav-sys').innerHTML =
       '<a href="#configuracoes" class="' + (route === 'configuracoes' ? 'active' : '') + '">' + ic('sliders', 18) + '<span>Configurações</span></a>';
 
     const el = S.cycleElapsed();
-    const total = Math.max(1, S.daysUntil(s.company.cycleEnd) - S.daysUntil(s.company.cycleStart));
-    const day = Math.min(total, Math.max(0, total - S.cycleDaysLeft()));
     document.getElementById('cycle-card').innerHTML =
-      '<div class="row"><span class="title">Ciclo ' + esc(s.company.cycle) + '</span><span class="meta mono">' + U.pct(S.overallProgress()) + '</span></div>' +
-      '<div class="meta">Dia ' + day + ' de ' + total + ' · ' + S.cycleDaysLeft() + ' dias restantes</div>' +
+      '<div class="row"><span class="title">' + esc(s.company.cycle) + '</span><span class="meta">' + S.cycleDaysLeft() + ' dias restantes</span></div>' +
       '<div class="track" title="Tempo decorrido do ciclo"><span style="width:' + (el * 100).toFixed(1) + '%"></span></div>';
 
-    document.getElementById('crumb-eyebrow').textContent = s.company.name + ' · ' + s.company.cycle;
     document.getElementById('crumb-title').textContent = V[route].title;
     document.title = V[route].title + ' · ' + s.company.name;
-    document.getElementById('save-state').innerHTML = S.persisted ? '<i></i> Salvo neste navegador' : '<i style="background:var(--st-warn);box-shadow:0 0 0 3px var(--st-warn-bg)"></i> Somente nesta sessão';
     document.getElementById('theme-btn').innerHTML = ic(effectiveTheme() === 'dark' ? 'sun' : 'moon', 18);
   }
 
@@ -195,22 +188,9 @@
     } else fallback();
   }
 
-  /** Confirmação genérica de reset com desfazer. */
-  function confirmReset(title, text, label, mutate) {
-    U.openModal({
-      title, text, danger: true, icon: 'refresh', confirmLabel: label,
-      onConfirm: () => {
-        const snap = S.snapshot();
-        mutate();
-        U.toast(title.replace('?', '') + ' concluído', { actionLabel: 'Desfazer', onAction: () => S.restore(snap), ms: 7000 });
-      },
-    });
-  }
-
   const ACTIONS = {
     'toggle-nav': () => app.classList.toggle('nav-open'),
     'toggle-theme': () => { S.ui.theme = effectiveTheme() === 'dark' ? 'light' : 'dark'; S.saveUI(); applyTheme(); render(false); },
-    'set-theme': (el) => { S.ui.theme = el.dataset.v; S.saveUI(); applyTheme(); render(false); },
     'toggle-new': (el) => {
       const menu = el.parentElement.querySelector('.dropdown-menu');
       menu.hidden = !menu.hidden;
@@ -220,65 +200,25 @@
     // Objetivos
     'new-objective': () => F.editObjective(),
     'edit-objective': (el) => openItem('objectives', el.dataset.id),
-    'delete-objective': (el) => {
-      const o = S.byId('objectives', el.dataset.id);
-      U.confirmDelete('Excluir objetivo?', '"' + o.title + '" e seus ' + S.krsOf(o.id).length + ' KR(s) serão removidos. Planos e indicadores ficam desvinculados.',
-        () => F.removeWithUndo('objectives', o.id, 'Objetivo excluído'));
-    },
     'toggle-objective': (el) => { const id = el.dataset.id; if (S.ui.collapsed[id]) delete S.ui.collapsed[id]; else S.ui.collapsed[id] = true; S.saveUI(); render(false); },
-    'toggle-all': () => {
-      const all = S.state.objectives.every((o) => S.ui.collapsed[o.id]);
-      S.ui.collapsed = {};
-      if (!all) S.state.objectives.forEach((o) => { S.ui.collapsed[o.id] = true; });
-      S.saveUI(); render(false);
-    },
-    'goto-objective': (el) => {
-      delete S.ui.collapsed[el.dataset.id]; S.saveUI();
-      go('okrs');
-      setTimeout(() => { const t = document.getElementById('obj-' + el.dataset.id); if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
-    },
-
     // KRs
     'new-kr': (el) => F.editKR(null, el.dataset.id),
     'edit-kr': (el) => openItem('krs', el.dataset.id),
-    'delete-kr': (el) => {
-      const k = S.byId('krs', el.dataset.id);
-      U.confirmDelete('Excluir este KR?', '"' + k.title + '" será removido. Planos e indicadores ligados a ele ficam sem vínculo.', () => F.removeWithUndo('krs', k.id, 'KR excluído'));
-    },
     'kr-inc': (el) => stepKR(el.dataset.id, 1),
     'kr-dec': (el) => stepKR(el.dataset.id, -1),
-    'new-action-kr': (el) => F.editAction(null, { krId: el.dataset.id }),
-    'goto-actions-kr': (el) => {
-      const kr = S.byId('krs', el.dataset.id);
-      Object.assign(S.ui.actionFilters, { objectiveId: kr ? kr.objectiveId : '', krId: el.dataset.id, owner: '', status: '', q: '' });
-      S.saveUI(); go('planos');
-    },
-
     // Indicadores
     'new-kpi': () => F.editKPI(),
     'edit-kpi': (el) => openItem('kpis', el.dataset.id),
     'measure-kpi': (el) => F.recordMeasurement(S.byId('kpis', el.dataset.id)),
-    'delete-kpi': (el) => {
-      const k = S.byId('kpis', el.dataset.id);
-      U.confirmDelete('Excluir indicador?', '"' + k.name + '" e seu histórico serão removidos.', () => F.removeWithUndo('kpis', k.id, 'Indicador excluído'));
-    },
-    'kpi-view': (el) => { S.ui.kpiView = el.dataset.v; S.saveUI(); render(false); },
-    'clear-kpi-filters': () => { S.ui.kpiFilters = { objectiveId: '', krId: '' }; S.saveUI(); render(false); },
-
     // Planos de ação
     'new-action': () => {
       const f = S.ui.actionFilters;
       // herda o contexto dos filtros ativos para agilizar o cadastro
-      F.editAction(null, route === 'planos' ? { objectiveId: f.objectiveId, krId: f.krId, owner: f.owner === '__none' ? '' : f.owner } : {});
+      F.editAction(null, route === 'planos' ? { objectiveId: f.objectiveId, krId: f.krId } : {});
     },
     'edit-action': (el) => openItem('actions', el.dataset.id),
-    'delete-action': (el) => {
-      const a = S.byId('actions', el.dataset.id);
-      U.confirmDelete('Excluir plano de ação?', '"' + a.title + '" será removido.', () => F.removeWithUndo('actions', a.id, 'Plano de ação excluído'));
-    },
     'action-view': (el) => { S.ui.actionView = el.dataset.v; S.saveUI(); render(false); },
-    'clear-filters': () => { S.ui.actionFilters = { objectiveId: '', krId: '', owner: '', status: '', q: '' }; S.saveUI(); render(false); },
-    'quick-filter': (el) => { S.ui.actionFilters[el.dataset.k] = el.dataset.v; S.saveUI(); render(false); },
+    'clear-filters': () => { S.ui.actionFilters = { objectiveId: '', krId: '', status: '' }; S.saveUI(); render(false); },
     'open-item': (el) => openItem(el.dataset.kind, el.dataset.id),
 
     // MVV
@@ -298,14 +238,7 @@
     'edit-person': (el) => F.editPerson(S.byId('people', el.dataset.id)),
     'export-json': exportJSON,
     'copy-json': copyJSON,
-    'reset-progress': () => confirmReset('Zerar progresso?', 'Valores atuais dos KRs voltam ao valor inicial; planos voltam a "não iniciado" e checklists são desmarcados.', 'Zerar', () =>
-      S.commit((s) => {
-        s.krs.forEach((k) => { k.current = k.start; k.status = 'not_started'; });
-        s.actions.forEach((a) => { a.progress = 0; a.status = 'not_started'; a.checklist.forEach((c) => { c.done = false; }); });
-      })),
-    'reset-seed': () => confirmReset('Restaurar OKRs iniciais?', 'Todo o conteúdo atual será substituído pelos OKRs iniciais do Q4 2026, com valores zerados.', 'Restaurar', () => S.replace(S.seed())),
-    'reset-blank': () => confirmReset('Começar do zero?', 'Objetivos, KRs, indicadores, planos e MVV serão apagados.', 'Apagar tudo', () =>
-      S.commit((s) => { s.objectives = []; s.krs = []; s.kpis = []; s.actions = []; s.mvv = { mission: '', vision: '', values: [] }; })),
+
   };
 
   document.addEventListener('click', (e) => {
@@ -365,24 +298,12 @@
       }
       S.saveUI(); render(false); return;
     }
-    if (t.dataset.kfilter) {
-      const kf = S.ui.kpiFilters;
-      kf[t.dataset.kfilter] = t.value;
-      // KR e objetivo precisam ser coerentes entre si
-      const kr = S.byId('krs', kf.krId);
-      if (t.dataset.kfilter === 'objectiveId' && kr && t.value && kr.objectiveId !== t.value) kf.krId = '';
-      if (t.dataset.kfilter === 'krId' && kr) kf.objectiveId = kr.objectiveId;
-      S.saveUI(); render(false); return;
-    }
-    if (t.dataset.uiSelect) { S.ui[t.dataset.uiSelect] = t.value; S.saveUI(); render(false); return; }
     if (t.dataset.mvv) { saveMVV(t); return; }
     if (t.id === 'import-file' && t.files && t.files[0]) importFile(t.files[0], t);
   });
 
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.dataset.ui) { S.ui[t.dataset.ui] = t.value; S.saveUI(); render(false); return; }
-    if (t.dataset.filter && t.tagName === 'INPUT') { S.ui.actionFilters[t.dataset.filter] = t.value; S.saveUI(); render(false); return; }
     if (t.dataset.mvv) {
       clearTimeout(mvvTimer);
       mvvTimer = setTimeout(() => saveMVV(t), 400); // salva ~0,4s após parar de digitar

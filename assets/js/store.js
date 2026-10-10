@@ -71,6 +71,28 @@
   // ---------------------------------------------------------------------------
 
   /**
+   * Missão, visão e valores oficiais da VISTA studios. Ficam no código para
+   * aparecerem iguais em qualquer navegador. Para alterar, edite aqui e
+   * incremente MVV_VERSION.
+   */
+  const OFFICIAL_MVV = {
+    mission: 'Transformar a visão do mundo sobre o mercado imobiliário, impactando nos resultados dos nossos clientes.',
+    vision: 'Criar um novo modelo de negócio, impulsionando uma nova categoria no mercado imobiliário.',
+    values: ['Querência', 'Obsessão', 'No Excuse', 'Kaizen', 'Fazemos a oportunidade'],
+  };
+  /** Versão do texto oficial do MVV; ao incrementar, todos os navegadores recebem o texto novo. */
+  const MVV_VERSION = 1;
+
+  /** MVV oficial no formato do estado (valores como itens editáveis). */
+  function officialMvv() {
+    return {
+      mission: OFFICIAL_MVV.mission,
+      vision: OFFICIAL_MVV.vision,
+      values: OFFICIAL_MVV.values.map((title, i) => ({ id: 'v' + (i + 1), title, description: '' })),
+    };
+  }
+
+  /**
    * OKRs iniciais do ciclo Q4 2026, como definidos no quadro da equipe.
    * Valores atuais começam em zero (início do acompanhamento), sem
    * responsáveis nem planos de ação: a equipe preenche pelo painel.
@@ -130,7 +152,8 @@
       syncMigrated: true,
       updatedAt: new Date().toISOString(),
       company: { name: 'VISTA studios', cycle: 'Q4 2026', cycleStart: '2026-10-01', cycleEnd: '2026-12-31' },
-      mvv: { mission: '', vision: '', values: [] },
+      mvv: officialMvv(),
+      mvvVersion: MVV_VERSION,
       people,
     }, strategySeed());
   }
@@ -243,6 +266,11 @@
   }
 
   const boot = upgradeStrategy(normalize(readLS(STORAGE_KEY)));
+  // aplica o MVV oficial uma vez por versão do texto
+  if (boot.state && !(boot.state.mvvVersion >= MVV_VERSION)) {
+    boot.state.mvv = officialMvv();
+    boot.state.mvvVersion = MVV_VERSION;
+  }
   let state = boot.state || seed();
   let persisted = writeLS(STORAGE_KEY, state);
 
@@ -250,15 +278,14 @@
     theme: 'system',            // 'system' | 'light' | 'dark'
     collapsed: {},              // { [objectiveId]: true } objetivos recolhidos
     actionView: 'table',        // 'table' | 'board'
-    actionFilters: { objectiveId: '', krId: '', owner: '', status: '', q: '' },
-    kpiView: 'cards',           // 'cards' | 'table'
-    kpiFilters: { objectiveId: '', krId: '' }, // filtros da tela de indicadores
+    actionFilters: { objectiveId: '', krId: '', status: '' },
   }, readLS(UI_KEY) || {});
+  // filtros removidos da interface (responsável, busca) não podem ficar presos
+  ui.actionFilters = { objectiveId: ui.actionFilters.objectiveId || '', krId: ui.actionFilters.krId || '', status: ui.actionFilters.status || '' };
   if (boot.upgraded) {
     // filtros e grupos recolhidos apontavam para os OKRs anteriores
     ui.collapsed = {};
-    ui.actionFilters = { objectiveId: '', krId: '', owner: '', status: '', q: '' };
-    ui.kpiFilters = { objectiveId: '', krId: '' };
+    ui.actionFilters = { objectiveId: '', krId: '', status: '' };
     writeLS(UI_KEY, ui);
   }
 
@@ -511,21 +538,6 @@
     return clamp01(num(a.progress) / 100);
   }
 
-  /**
-   * Tendência de um indicador. Se configurada manualmente, respeita;
-   * se "auto", compara as duas últimas medições do histórico.
-   * @returns {'up'|'down'|'flat'}
-   */
-  function kpiTrend(k) {
-    if (k.trend && k.trend !== 'auto') return k.trend;
-    const h = (k.history || []).map(num);
-    if (h.length < 2) return 'flat';
-    const a = h[h.length - 2], b = h[h.length - 1];
-    if (b > a) return 'up';
-    if (b < a) return 'down';
-    return 'flat';
-  }
-
   /** Atingimento do indicador em relação à meta (0–1), respeitando a direção. */
   function kpiAttainment(k) {
     const cur = num(k.current), target = num(k.target);
@@ -594,6 +606,6 @@
     todayISO, parseDate, daysUntil,
     krProgress, krsOf, objectiveProgress, objectiveStatus, overallProgress,
     cycleElapsed, cycleDaysLeft, health, isOverdue, actionProgress,
-    kpiTrend, kpiAttainment, alerts, upcoming, krCode, objectiveIndex, num,
+    kpiAttainment, alerts, upcoming, krCode, objectiveIndex, num,
   };
 })();
