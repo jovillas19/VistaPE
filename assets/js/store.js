@@ -22,6 +22,14 @@
   const UI_KEY = 'vista-ui-v1';
   /** Versão do schema de dados. Incrementar ao mudar a forma do estado. */
   const SCHEMA_VERSION = 1;
+  /**
+   * Versão dos OKRs iniciais. Ao incrementar, navegadores com dados de uma
+   * versão anterior recebem os novos objetivos/KRs/indicadores uma única vez
+   * (ver upgradeStrategy). 2 = OKRs definidos no quadro em out/2026.
+   */
+  const SEED_VERSION = 2;
+  /** Cópia de segurança do estado anterior à troca de OKRs iniciais. */
+  const BACKUP_KEY = 'vista-strategy-backup-before-seed-' + SEED_VERSION;
 
   /** Rótulos de status compartilhados por KRs e planos de ação. */
   const STATUS = {
@@ -58,30 +66,56 @@
   /** Converte para número; valores inválidos viram 0. */
   function num(v) { const n = parseFloat(v); return isFinite(n) ? n : 0; }
 
-  /**
-   * Indicador "Avaliações promotoras (9–10)": é a métrica exata do KR de
-   * satisfação, por isso é a origem do valor desse KR. Fábrica separada
-   * para ser reutilizada na migração de dados salvos antes da sincronização.
-   * @param {number} [current=67] - Valor atual (% de respostas 9 ou 10).
-   */
-  function PROMOTERS_KPI(current) {
-    return {
-      id: 'k6', name: 'Avaliações promotoras (9–10)', description: 'Parcela das respostas da pesquisa pós-entrega com nota 9 ou 10.',
-      formula: '(respostas com nota 9 ou 10 ÷ total de respostas) × 100', current: current == null ? 67 : current, target: 80, unit: '% promotores',
-      direction: 'up', trend: 'auto', objectiveId: 'o1', krId: 'kr_o1_2', history: current == null ? [50, 55, 60, 62, 65, 67] : [current],
-    };
-  }
-
   // ---------------------------------------------------------------------------
   // Dados iniciais
   // ---------------------------------------------------------------------------
 
   /**
-   * Monta o conjunto de dados de exemplo do ciclo Q4 2026.
-   * Os OKRs vêm do planejamento real da VISTA; valores atuais, histórico,
-   * responsáveis (por área) e planos de ação são exemplos plausíveis para
-   * o protótipo parecer em uso — todos editáveis.
-   * @returns {object} Estado completo inicial.
+   * OKRs iniciais do ciclo Q4 2026, como definidos no quadro da equipe.
+   * Valores atuais começam em zero (início do acompanhamento), sem
+   * responsáveis nem planos de ação: a equipe preenche pelo painel.
+   * Cada KR tem um indicador de origem, que o atualiza automaticamente.
+   * @returns {{objectives: object[], krs: object[], kpis: object[], actions: object[]}}
+   */
+  function strategySeed() {
+    const END = '2026-12-31'; // fim do ciclo Q4 2026
+    const objectives = [
+      { id: 'o1', title: 'Validar o modelo de negócio', description: '', owner: '', deadline: END, color: OBJECTIVE_COLORS[0], notes: '' },
+      { id: 'o2', title: 'Expandir a operação local', description: '', owner: '', deadline: END, color: OBJECTIVE_COLORS[2], notes: '' },
+    ];
+    const kr = (id, objectiveId, title, target, unit, kpiId) => ({
+      id, objectiveId, title, description: '', start: 0, current: 0, target, unit,
+      owner: '', deadline: END, status: 'not_started', notes: '', kpiId,
+    });
+    const krs = [
+      kr('kr_o1_1', 'o1', 'Capacitar 1 fotógrafo em outro estado', 1, 'fotógrafo', 'k1'),
+      kr('kr_o1_2', 'o1', 'Conseguir 5 clientes em outro estado', 5, 'clientes', 'k2'),
+      kr('kr_o2_1', 'o2', 'Conseguir 10 clientes na carteira em SSA', 10, 'clientes', 'k4'),
+      kr('kr_o2_2', 'o2', 'Capacitar 1 fotógrafo em SSA', 1, 'fotógrafo', 'k5'),
+    ];
+    const kpi = (id, name, description, formula, target, unit, objectiveId, krId) => ({
+      id, name, description, formula, current: 0, target, unit,
+      direction: 'up', trend: 'auto', objectiveId, krId, history: [],
+    });
+    const kpis = [
+      kpi('k1', 'Nº de fotógrafos em outro estado', 'Fotógrafos capacitados no padrão VISTA fora do estado-base.',
+        'Fotógrafos com capacitação concluída em outro estado', 1, 'fotógrafo', 'o1', 'kr_o1_1'),
+      kpi('k2', 'Nº de clientes em outro estado', 'Clientes conquistados fora do estado-base.',
+        'Clientes com contrato fechado em outro estado', 5, 'clientes', 'o1', 'kr_o1_2'),
+      kpi('k3', 'Faturamento', 'Faturamento acumulado no trimestre. Registre o total atualizado a cada mês.',
+        'Soma do faturamento dos meses do ciclo', 20000, 'R$', 'o2', ''),
+      kpi('k4', 'Nº de clientes na carteira em SSA', 'Clientes ativos na carteira em Salvador.',
+        'Clientes ativos na carteira em SSA', 10, 'clientes', 'o2', 'kr_o2_1'),
+      kpi('k5', 'Nº de fotógrafos em SSA', 'Fotógrafos capacitados no padrão VISTA em Salvador.',
+        'Fotógrafos com capacitação concluída em SSA', 1, 'fotógrafo', 'o2', 'kr_o2_2'),
+    ];
+    return { objectives, krs, kpis, actions: [] };
+  }
+
+  /**
+   * Estado completo inicial: empresa, ciclo Q4 2026, responsáveis por área,
+   * MVV em branco e os OKRs de {@link strategySeed}.
+   * @returns {object}
    */
   function seed() {
     const people = [
@@ -90,150 +124,15 @@
       { id: 'p_ops', name: 'Operações', role: 'Fotografia e edição', color: PERSON_COLORS[3] },
       { id: 'p_cs', name: 'Sucesso do Cliente', role: 'Atendimento e pós-venda', color: PERSON_COLORS[4] },
     ];
-
-    const objectives = [
-      {
-        id: 'o1', title: 'Validar a viabilidade do modelo de negócio',
-        description: 'Comprovar que o negócio é capaz de gerar valor ao cliente com recorrência e satisfação.',
-        owner: 'p_dir', deadline: '2026-12-31', color: OBJECTIVE_COLORS[0], notes: '',
-      },
-      {
-        id: 'o2', title: 'Validar a capacidade de expansão geográfica',
-        description: 'Demonstrar que o modelo operacional e comercial pode ser replicado em outros mercados.',
-        owner: 'p_dir', deadline: '2026-12-31', color: OBJECTIVE_COLORS[2], notes: '',
-      },
-    ];
-
-    const krs = [
-      {
-        id: 'kr_o1_1', objectiveId: 'o1', title: 'Conquistar 5 clientes recorrentes',
-        description: 'Cliente recorrente = imobiliária ou corretor com 2+ ensaios contratados no trimestre ou plano mensal ativo.',
-        start: 0, current: 2, target: 5, unit: 'clientes', owner: 'p_com', deadline: '2026-12-15', status: 'in_progress', notes: '', kpiId: 'k1',
-      },
-      {
-        id: 'kr_o1_2', objectiveId: 'o1', title: 'Validar a satisfação dos clientes por meio de NPS e CSAT, buscando avaliações promotoras de 9 ou 10',
-        description: 'Medido pela parcela de respostas com nota 9 ou 10 na pesquisa pós-entrega (NPS) e pela satisfação por ensaio (CSAT).',
-        start: 0, current: 67, target: 80, unit: '% promotores', owner: 'p_cs', deadline: '2026-12-15', status: 'in_progress', notes: 'Meta inicial de 80% de promotores. Ajustar após 20 respostas.', kpiId: 'k6',
-      },
-      {
-        id: 'kr_o2_1', objectiveId: 'o2', title: 'Capacitar 2 fotógrafos em outro estado',
-        description: 'Capacitado = concluiu o treinamento VISTA e entregou um ensaio-piloto aprovado no padrão de qualidade.',
-        start: 0, current: 1, target: 2, unit: 'fotógrafos', owner: 'p_ops', deadline: '2026-11-30', status: 'in_progress', notes: '', kpiId: 'k4',
-      },
-      {
-        id: 'kr_o2_2', objectiveId: 'o2', title: 'Fechar 5 contratos em outro estado',
-        description: 'Contratos assinados com clientes sediados fora do estado de origem.',
-        start: 0, current: 1, target: 5, unit: 'contratos', owner: 'p_com', deadline: '2026-12-20', status: 'at_risk', notes: 'Depende da capacitação dos fotógrafos locais para ganhar tração.', kpiId: 'k5',
-      },
-    ];
-
-    const kpis = [
-      {
-        id: 'k1', name: 'Clientes recorrentes', description: 'Clientes ativos com recorrência comprovada no trimestre.',
-        formula: 'Nº de clientes com ≥ 2 ensaios no trimestre ou plano mensal ativo', current: 2, target: 5, unit: 'clientes',
-        direction: 'up', trend: 'auto', objectiveId: 'o1', krId: 'kr_o1_1', history: [0, 0, 1, 1, 2, 2],
-      },
-      PROMOTERS_KPI(),
-      {
-        id: 'k2', name: 'NPS', description: 'Net Promoter Score da pesquisa pós-entrega.',
-        formula: '% promotores (9–10) − % detratores (0–6)', current: 58, target: 70, unit: 'pts',
-        direction: 'up', trend: 'auto', objectiveId: 'o1', krId: 'kr_o1_2', history: [40, 45, 50, 52, 55, 58],
-      },
-      {
-        id: 'k3', name: 'CSAT', description: 'Satisfação média por ensaio entregue.',
-        formula: '(respostas 4 ou 5 ÷ total de respostas) × 100', current: 88, target: 90, unit: '%',
-        direction: 'up', trend: 'auto', objectiveId: 'o1', krId: 'kr_o1_2', history: [86, 89, 87, 88, 88, 88],
-      },
-      {
-        id: 'k4', name: 'Fotógrafos capacitados em outro estado', description: 'Profissionais aprovados no padrão VISTA fora da base.',
-        formula: 'Nº de fotógrafos com treinamento concluído + piloto aprovado', current: 1, target: 2, unit: 'fotógrafos',
-        direction: 'up', trend: 'auto', objectiveId: 'o2', krId: 'kr_o2_1', history: [0, 0, 0, 1, 1, 1],
-      },
-      {
-        id: 'k5', name: 'Contratos fechados em outro estado', description: 'Contratos assinados no novo mercado.',
-        formula: 'Nº de contratos assinados com clientes de fora do estado-base', current: 1, target: 5, unit: 'contratos',
-        direction: 'up', trend: 'auto', objectiveId: 'o2', krId: 'kr_o2_2', history: [0, 0, 0, 0, 1, 1],
-      },
-    ];
-
-    const ck = (text, done) => ({ id: uid('ck'), text, done: !!done });
-    const actions = [
-      {
-        id: 'a1', title: 'Estruturar plano de assinatura mensal para imobiliárias',
-        description: 'Pacote com cota de ensaios/mês, prazo de entrega garantido e preço por volume.',
-        objectiveId: 'o1', krId: 'kr_o1_1', owner: 'p_com', deadline: '2026-10-20', priority: 'high', status: 'in_progress', progress: 50,
-        notes: 'Validar preço com 3 clientes atuais antes de publicar.',
-        checklist: [ck('Levantar custos por ensaio', true), ck('Definir 3 faixas de plano', true), ck('Validar com clientes atuais'), ck('Montar proposta comercial')],
-      },
-      {
-        id: 'a2', title: 'Prospectar 20 imobiliárias e corretores na região',
-        description: 'Lista priorizada por volume de anúncios ativos; abordagem com portfólio + ensaio-teste.',
-        objectiveId: 'o1', krId: 'kr_o1_1', owner: 'p_com', deadline: '2026-10-31', priority: 'high', status: 'in_progress', progress: 35,
-        notes: '', checklist: [],
-      },
-      {
-        id: 'a3', title: 'Implantar pesquisa NPS + CSAT pós-entrega',
-        description: 'Formulário curto enviado 24h após a entrega das fotos, com lembrete em 72h.',
-        objectiveId: 'o1', krId: 'kr_o1_2', owner: 'p_cs', deadline: '2026-10-03', priority: 'high', status: 'in_progress', progress: 75,
-        notes: 'Falta automatizar o lembrete.',
-        checklist: [ck('Escrever perguntas', true), ck('Criar formulário', true), ck('Disparo automático após entrega', true), ck('Lembrete em 72h')],
-      },
-      {
-        id: 'a4', title: 'Rotina de retorno a clientes detratores',
-        description: 'Contato em até 48h com quem der nota ≤ 6, registro da causa e plano de correção.',
-        objectiveId: 'o1', krId: 'kr_o1_2', owner: '', deadline: '2026-11-15', priority: 'medium', status: 'not_started', progress: 0,
-        notes: '', checklist: [],
-      },
-      {
-        id: 'a5', title: 'Mapear mercado e escolher o estado-alvo',
-        description: 'Comparar volume imobiliário, concorrência e custo de operação em 3 estados candidatos.',
-        objectiveId: 'o2', krId: 'kr_o2_2', owner: 'p_dir', deadline: '2026-10-05', priority: 'high', status: 'done', progress: 100,
-        notes: 'Estado-alvo definido.', checklist: [],
-      },
-      {
-        id: 'a6', title: 'Criar manual do padrão VISTA (captura + edição)',
-        description: 'Guia de enquadramento, luz, checklist de cômodos e preset de edição.',
-        objectiveId: 'o2', krId: 'kr_o2_1', owner: 'p_ops', deadline: '2026-10-15', priority: 'high', status: 'in_progress', progress: 70,
-        notes: '',
-        checklist: [ck('Guia de enquadramento por cômodo', true), ck('Preset de edição', true), ck('Checklist de entrega'), ck('Vídeo-aula de 15 min')],
-      },
-      {
-        id: 'a7', title: 'Recrutar fotógrafos parceiros no estado-alvo',
-        description: 'Triagem de portfólio e entrevista com 6 candidatos.',
-        objectiveId: 'o2', krId: 'kr_o2_1', owner: 'p_ops', deadline: '2026-10-25', priority: 'high', status: 'in_progress', progress: 50,
-        notes: '', checklist: [],
-      },
-      {
-        id: 'a8', title: 'Treinamento remoto e ensaio-piloto',
-        description: 'Duas sessões de treinamento e um ensaio real revisado pela equipe de Operações.',
-        objectiveId: 'o2', krId: 'kr_o2_1', owner: 'p_ops', deadline: '2026-11-20', priority: 'medium', status: 'not_started', progress: 0,
-        notes: '', checklist: [],
-      },
-      {
-        id: 'a9', title: 'Campanha comercial no novo estado',
-        description: 'Anúncios segmentados para corretores + visitas presenciais às 10 maiores imobiliárias.',
-        objectiveId: 'o2', krId: 'kr_o2_2', owner: 'p_com', deadline: '2026-11-30', priority: 'medium', status: 'not_started', progress: 0,
-        notes: '', checklist: [],
-      },
-      {
-        id: 'a10', title: 'Fechar parceria com 2 imobiliárias âncora',
-        description: 'Condição de lançamento em troca de volume mínimo e depoimento.',
-        objectiveId: 'o2', krId: 'kr_o2_2', owner: '', deadline: '2026-12-10', priority: 'high', status: 'not_started', progress: 0,
-        notes: '', checklist: [],
-      },
-    ];
-
-    return {
+    return Object.assign({
       version: SCHEMA_VERSION,
+      seedVersion: SEED_VERSION,
+      syncMigrated: true,
       updatedAt: new Date().toISOString(),
       company: { name: 'VISTA studios', cycle: 'Q4 2026', cycleStart: '2026-10-01', cycleEnd: '2026-12-31' },
-      mvv: {
-        mission: '',
-        vision: '',
-        values: [],
-      },
-      people, objectives, krs, kpis, actions,
-    };
+      mvv: { mission: '', vision: '', values: [] },
+      people,
+    }, strategySeed());
   }
 
   // ---------------------------------------------------------------------------
@@ -264,8 +163,7 @@
    * Migração para a sincronização KPI → KR (dados salvos antes dela).
    * Cada KR sem indicador de origem recebe o primeiro indicador vinculado a
    * ele com a mesma unidade de medida (evita, p. ex., NPS em "pts" alimentar
-   * um KR em "% promotores"). O KR de satisfação do exemplo ganha o indicador
-   * de promotores, criado a partir do valor atual do próprio KR.
+   * um KR em "% promotores").
    * @param {object} s - Estado (alterado in place).
    */
   function migrateSync(s) {
@@ -273,13 +171,7 @@
     s.krs.forEach((kr) => {
       if (kr.kpiId !== undefined) return;
       const k = s.kpis.find((x) => x.krId === kr.id && x.unit === kr.unit);
-      if (k) { kr.kpiId = k.id; return; }
-      if (kr.id === 'kr_o1_2' && !s.kpis.some((x) => x.id === 'k6')) {
-        s.kpis.splice(1, 0, PROMOTERS_KPI(num(kr.current)));
-        kr.kpiId = 'k6';
-        return;
-      }
-      kr.kpiId = '';
+      kr.kpiId = k ? k.id : '';
     });
     s.syncMigrated = true;
   }
@@ -335,7 +227,23 @@
     return s;
   }
 
-  let state = normalize(readLS(STORAGE_KEY)) || seed();
+  /**
+   * Troca os OKRs de dados salvos com uma versão anterior dos OKRs iniciais
+   * pelos atuais (uma única vez por navegador). Mantém empresa, ciclo, MVV
+   * e responsáveis, e guarda o estado anterior em BACKUP_KEY por segurança.
+   * NOTA: roda só no carregamento; backups importados não passam por aqui.
+   * @param {object|null} s - Estado normalizado lido do navegador.
+   * @returns {{state: object|null, upgraded: boolean}}
+   */
+  function upgradeStrategy(s) {
+    if (!s || s.seedVersion >= SEED_VERSION) return { state: s, upgraded: false };
+    writeLS(BACKUP_KEY, s);
+    Object.assign(s, strategySeed(), { seedVersion: SEED_VERSION, syncMigrated: true });
+    return { state: s, upgraded: true };
+  }
+
+  const boot = upgradeStrategy(normalize(readLS(STORAGE_KEY)));
+  let state = boot.state || seed();
   let persisted = writeLS(STORAGE_KEY, state);
 
   const ui = Object.assign({
@@ -346,6 +254,13 @@
     kpiView: 'cards',           // 'cards' | 'table'
     kpiFilters: { objectiveId: '', krId: '' }, // filtros da tela de indicadores
   }, readLS(UI_KEY) || {});
+  if (boot.upgraded) {
+    // filtros e grupos recolhidos apontavam para os OKRs anteriores
+    ui.collapsed = {};
+    ui.actionFilters = { objectiveId: '', krId: '', owner: '', status: '', q: '' };
+    ui.kpiFilters = { objectiveId: '', krId: '' };
+    writeLS(UI_KEY, ui);
+  }
 
   const listeners = new Set();
 
@@ -381,6 +296,7 @@
   function replace(next) {
     const n = normalize(clone(next));
     if (!n) throw new Error('Arquivo não reconhecido: faltam os objetivos estratégicos.');
+    n.seedVersion = SEED_VERSION; // não substituir os OKRs importados ao recarregar
     restore(n);
   }
 

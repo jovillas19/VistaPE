@@ -120,6 +120,21 @@
     return v.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
   }
 
+  /** Unidade monetária: o símbolo vai antes do número ("R$ 20.000"). */
+  const isMoney = (unit) => /^R\$$/.test(String(unit || '').trim());
+
+  /**
+   * Valor com unidade, respeitando a posição do símbolo monetário.
+   * @param {number|string} n
+   * @param {string} unit
+   * @returns {string} Ex.: "R$ 20.000" ou "5 clientes".
+   * @example fmtValue(20000, 'R$') // "R$ 20.000"
+   */
+  function fmtValue(n, unit) {
+    if (isMoney(unit)) return 'R$ ' + fmtNum(n);
+    return fmtNum(n) + (unit ? ' ' + unit : '');
+  }
+
   /** Fração 0–1 → "42%". */
   const pct = (f) => Math.round((f || 0) * 100) + '%';
 
@@ -463,7 +478,7 @@
   });
 
   window.UI = {
-    esc, icon, logoMark, fmtDate, fmtNum, pct, relDays, initials,
+    esc, icon, logoMark, fmtDate, fmtNum, fmtValue, isMoney, pct, relDays, initials,
     statusBadge, priorityBadge, statusSelect, person, dateTag, progress,
     trendTag, empty, ring, donut, sparkline,
     openDrawer, closeDrawer, openModal, closeModal, confirmDelete, toast,

@@ -277,7 +277,7 @@
     const kr = S.krFedBy(k.id);
     U.openModal({
       title: 'Registrar medição',
-      text: k.name + ' · atual: ' + U.fmtNum(k.current) + ' ' + (k.unit || ''),
+      text: k.name + ' · atual: ' + U.fmtValue(k.current, k.unit),
       icon: 'pulse',
       confirmLabel: 'Registrar',
       body: '<div class="field"><label for="m-val">Novo valor' + (k.unit ? ' (' + esc(k.unit) + ')' : '') + '</label>' +

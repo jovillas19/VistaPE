@@ -303,7 +303,7 @@
         s.krs.forEach((k) => { k.current = k.start; k.status = 'not_started'; });
         s.actions.forEach((a) => { a.progress = 0; a.status = 'not_started'; a.checklist.forEach((c) => { c.done = false; }); });
       })),
-    'reset-seed': () => confirmReset('Restaurar dados de exemplo?', 'Todo o conteúdo atual será substituído pelos dados iniciais da VISTA studios.', 'Restaurar', () => S.replace(S.seed())),
+    'reset-seed': () => confirmReset('Restaurar OKRs iniciais?', 'Todo o conteúdo atual será substituído pelos OKRs iniciais do Q4 2026, com valores zerados.', 'Restaurar', () => S.replace(S.seed())),
     'reset-blank': () => confirmReset('Começar do zero?', 'Objetivos, KRs, indicadores, planos e MVV serão apagados.', 'Apagar tudo', () =>
       S.commit((s) => { s.objectives = []; s.krs = []; s.kpis = []; s.actions = []; s.mvv = { mission: '', vision: '', values: [] }; })),
   };

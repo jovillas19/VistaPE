@@ -92,7 +92,7 @@
       (s.kpis.length ? '<div class="kpi-mini-grid">' + s.kpis.slice(0, 6).map((k) =>
         '<button type="button" class="kpi-mini" data-act="edit-kpi" data-id="' + esc(k.id) + '">' +
         '<span class="n">' + esc(k.name) + '</span>' +
-        '<span class="v"><b class="num">' + U.fmtNum(k.current) + '</b><span>' + esc(k.unit) + (k.target !== '' ? ' · meta ' + U.fmtNum(k.target) : '') + '</span></span>' +
+        '<span class="v">' + (U.isMoney(k.unit) ? '<span>R$</span>' : '') + '<b class="num">' + U.fmtNum(k.current) + '</b><span>' + (U.isMoney(k.unit) ? '' : esc(k.unit)) + (k.target !== '' ? ' · meta ' + esc(U.fmtValue(k.target, U.isMoney(k.unit) ? 'R$' : '')) : '') + '</span></span>' +
         U.sparkline(k.history, k.target, { height: 36 }) +
         '<span style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">' + U.trendTag(k) + '<span class="mono faint" style="font-size:11px">' + U.pct(S.kpiAttainment(k)) + ' da meta</span></span>' +
         '</button>').join('') + '</div>' : U.empty('pulse', 'Sem indicadores', 'Cadastre os KPIs que medem a saúde da estratégia.'))
@@ -270,8 +270,8 @@
     if (view === 'table') {
       const rows = kpis.map((k) => '<tr>' +
         '<td class="title-cell">' + esc(k.name) + '<small>' + esc(k.description) + '</small></td>' +
-        '<td><b class="num" style="font-family:var(--font-display);font-size:16px">' + U.fmtNum(k.current) + '</b> <span class="faint">' + esc(k.unit) + '</span></td>' +
-        '<td class="num">' + (k.target !== '' ? U.fmtNum(k.target) + ' <span class="faint">' + esc(k.unit) + '</span>' : '—') + '</td>' +
+        '<td class="num" style="white-space:nowrap"><b style="font-family:var(--font-display);font-size:16px">' + esc(U.fmtValue(k.current, k.unit)) + '</b></td>' +
+        '<td class="num" style="white-space:nowrap">' + (k.target !== '' ? esc(U.fmtValue(k.target, k.unit)) : '—') + '</td>' +
         '<td style="min-width:150px">' + U.progress(S.kpiAttainment(k), {}) + '</td>' +
         '<td>' + U.trendTag(k) + '</td>' +
         '<td style="width:130px">' + U.sparkline(k.history, k.target, { height: 30 }) + '</td>' +
@@ -285,8 +285,8 @@
       const att = S.kpiAttainment(k);
       return '<article class="card kpi">' +
         '<div class="head"><div style="min-width:0"><h4>' + esc(k.name) + '</h4>' + (k.description ? '<p class="desc">' + esc(k.description) + '</p>' : '') + '</div>' + U.trendTag(k) + '</div>' +
-        '<div class="numbers"><div class="cur"><b class="num">' + U.fmtNum(k.current) + '</b><span>' + esc(k.unit) + '</span></div>' +
-        '<div class="target">Meta<b class="num">' + (k.target !== '' ? U.fmtNum(k.target) + ' ' + esc(k.unit) : '—') + '</b></div></div>' +
+        '<div class="numbers"><div class="cur">' + (U.isMoney(k.unit) ? '<span>R$</span><b class="num">' + U.fmtNum(k.current) + '</b>' : '<b class="num">' + U.fmtNum(k.current) + '</b><span>' + esc(k.unit) + '</span>') + '</div>' +
+        '<div class="target">Meta<b class="num">' + (k.target !== '' ? esc(U.fmtValue(k.target, k.unit)) : '—') + '</b></div></div>' +
         U.progress(att, { status: att >= 1 ? 'done' : '' }) +
         U.sparkline(k.history, k.target) +
         linkLine(k) +
@@ -515,7 +515,7 @@
       '<label class="btn btn-sm" for="import-file" style="cursor:pointer">' + ic('upload', 14) + ' Escolher arquivo</label><input type="file" id="import-file" accept="application/json,.json" hidden></div>' +
       '<div class="setting-row"><div><div class="t">Zerar progresso</div><div class="d">Mantém a estrutura e volta valores, status e checklists ao início do ciclo.</div></div>' +
       '<button class="btn btn-sm" data-act="reset-progress">' + ic('refresh', 14) + ' Zerar</button></div>' +
-      '<div class="setting-row"><div><div class="t">Restaurar dados de exemplo</div><div class="d">Volta ao conteúdo inicial da VISTA studios (OKRs do Q4 2026).</div></div>' +
+      '<div class="setting-row"><div><div class="t">Restaurar OKRs iniciais</div><div class="d">Volta aos objetivos, KRs e indicadores do Q4 2026 definidos pela equipe, com valores zerados.</div></div>' +
       '<button class="btn btn-sm" data-act="reset-seed">' + ic('refresh', 14) + ' Restaurar</button></div>' +
       '<div class="setting-row"><div><div class="t" style="color:var(--st-risk)">Começar do zero</div><div class="d">Apaga objetivos, KRs, indicadores, planos e MVV. Mantém empresa e responsáveis.</div></div>' +
       '<button class="btn btn-sm btn-danger" data-act="reset-blank">' + ic('trash', 14) + ' Apagar</button></div></div>';
