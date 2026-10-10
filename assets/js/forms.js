@@ -68,6 +68,27 @@
       '<select class="select" id="' + fid('owner') + '" name="owner">' + html + '</select></div>';
   }
 
+  /**
+   * Responsáveis de plano de ação: caixas de seleção dos cargos, agrupadas
+   * por área, permitindo marcar mais de um.
+   * @param {string[]} selected - Ids de cargo já atribuídos.
+   * @returns {string} HTML do campo.
+   */
+  function ownersChecks(selected) {
+    const sel = selected || [];
+    const groups = {};
+    S.orgRoles().forEach((r) => { (groups[r.area] = groups[r.area] || []).push(r); });
+    // responsável antigo (anterior à macroestrutura) segue marcado até ser desmarcado
+    const legacy = sel.filter((id) => !S.orgRoles().some((r) => r.id === id)).map((id) => S.byId('people', id)).filter(Boolean);
+    const box = (id, label, sub) => '<label class="owner-opt"><input type="checkbox" name="owners" value="' + esc(id) + '"' + (sel.indexOf(id) >= 0 ? ' checked' : '') + '>' +
+      '<span><b>' + esc(label) + '</b>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span></label>';
+    return '<div class="field full"><span class="label">Responsáveis</span><div class="owner-groups">' +
+      Object.keys(groups).map((area) => '<div class="owner-group"><div class="owner-area">' + esc(area) + '</div>' +
+        groups[area].map((r) => box(r.id, r.title, S.owner(r.id).sub)).join('') + '</div>').join('') +
+      (legacy.length ? '<div class="owner-group"><div class="owner-area">Responsável anterior</div>' + legacy.map((p) => box(p.id, p.name, '')).join('') + '</div>' : '') +
+      '</div><span class="hint">Marque um ou mais cargos.</span></div>';
+  }
+
   // Opções reutilizadas
   const statusOpts = () => Object.keys(S.STATUS).map((k) => [k, S.STATUS[k]]);
   const priorityOpts = () => Object.keys(S.PRIORITY).map((k) => [k, S.PRIORITY[k]]);
@@ -323,7 +344,7 @@
    */
   function editAction(a, defaults) {
     const isNew = !a;
-    a = a || Object.assign({ title: '', description: '', objectiveId: '', krId: '', owner: '', deadline: '', priority: 'medium', status: 'not_started', progress: 0, notes: '', checklist: [] }, defaults || {});
+    a = a || Object.assign({ title: '', description: '', objectiveId: '', krId: '', owners: [], deadline: '', priority: 'medium', status: 'not_started', progress: 0, notes: '', checklist: [] }, defaults || {});
     if (a.krId && !a.objectiveId) { const kr = S.byId('krs', a.krId); if (kr) a.objectiveId = kr.objectiveId; }
     // cópia local editável do checklist; só é gravada ao salvar
     let checklist = (a.checklist || []).map((c) => Object.assign({}, c));
@@ -335,10 +356,10 @@
       select('objectiveId', 'Objetivo', a.objectiveId, objectiveOpts(true)) +
       select('krId', 'Key Result', a.krId, krOpts(a.objectiveId)) +
       section('Execução') +
-      ownerSelect(a.owner) +
       text('deadline', 'Prazo', a.deadline, { type: 'date' }) +
       select('priority', 'Prioridade', a.priority, priorityOpts()) +
       select('status', 'Status', a.status, statusOpts()) +
+      ownersChecks(S.ownersOf(a)) +
       '<div class="field full"><label for="f-progress">Percentual de conclusão</label>' +
       '<div class="range-row"><input type="range" id="f-progress" name="progress" min="0" max="100" step="5" value="' + esc(a.progress || 0) + '"><output class="num" id="f-progress-out">' + esc(a.progress || 0) + '%</output></div>' +
       '<span class="hint" id="f-progress-hint"></span></div>' +
@@ -412,6 +433,8 @@
         const range = form.querySelector('#f-progress');
         v.progress = S.num(range.value); // range desabilitado não entra no FormData
         v.checklist = checklist.filter((c) => c.text.trim());
+        v.owners = new FormData(form).getAll('owners'); // várias caixas com o mesmo nome
+        delete v.owner;
         if (v.status === 'done') v.progress = 100;
         else if (v.progress >= 100) v.status = 'done'; // 100% (manual ou checklist completo) conclui o plano
         S.upsert('actions', Object.assign(isNew ? {} : { id: a.id }, v));

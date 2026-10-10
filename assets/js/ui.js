@@ -182,6 +182,25 @@
   }
 
   /**
+   * Vários responsáveis (planos de ação): avatares de todas as pessoas
+   * envolvidas, cargos separados por vírgula e nomes logo abaixo.
+   * Com um único cargo, equivale a {@link person}.
+   * @param {string[]} ids - Ids de cargo.
+   * @param {boolean} [compact] - Só os avatares, com cargos e nomes no tooltip.
+   * @returns {string}
+   */
+  function people(ids, compact) {
+    const list = (ids || []).map((id) => S.owner(id)).filter(Boolean);
+    if (list.length <= 1) return person(ids && ids[0], compact);
+    const holders = [];
+    list.forEach((o) => o.holders.forEach((h) => { if (!holders.some((x) => x.name === h.name)) holders.push(h); }));
+    const titles = list.map((o) => o.title).join(', ');
+    const names = holders.map((h) => h.name).join(', ');
+    return '<span class="person" title="' + esc(titles + ' · ' + names) + '">' + avatars(holders) +
+      (compact ? '' : '<span class="who"><span class="role">' + esc(titles) + '</span><small>' + esc(names) + '</small></span>') + '</span>';
+  }
+
+  /**
    * Responsável (cargo da macroestrutura): avatares dos ocupantes + cargo,
    * com os nomes logo abaixo. Destaca em âmbar quando não há responsável.
    * @param {string} ownerId - Id do cargo (ou de um responsável antigo).
@@ -457,7 +476,7 @@
 
   window.UI = {
     esc, icon, logoMark, fmtDate, fmtNum, fmtValue, isMoney, pct, relDays, initials,
-    statusBadge, priorityBadge, statusSelect, person, avatars, dateTag, progress,
+    statusBadge, priorityBadge, statusSelect, person, people, avatars, dateTag, progress,
     empty, ring, sparkline,
     openDrawer, closeDrawer, openModal, closeModal, confirmDelete, toast,
     get drawerOpen() { return !!drawerEl; },

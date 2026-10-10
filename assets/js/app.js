@@ -219,7 +219,7 @@
     },
     'edit-action': (el) => openItem('actions', el.dataset.id),
     'action-view': (el) => { S.ui.actionView = el.dataset.v; S.saveUI(); render(false); },
-    'clear-filters': () => { S.ui.actionFilters = { objectiveId: '', krId: '', status: '' }; S.saveUI(); render(false); },
+    'clear-filters': () => { S.ui.actionFilters = { objectiveId: '', krId: '', status: '', person: '', area: '' }; S.saveUI(); render(false); },
     'open-item': (el) => openItem(el.dataset.kind, el.dataset.id),
 
     // MVV

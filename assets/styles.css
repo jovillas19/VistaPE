@@ -397,6 +397,18 @@ svg { flex-shrink: 0; }
 .person .who .role { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person .who small { font-size: 11.5px; font-weight: 500; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Seleção de vários responsáveis no formulário de plano */
+.owner-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.owner-group { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.owner-area { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 2px; }
+.owner-opt { display: flex; gap: 9px; align-items: flex-start; padding: 7px 9px; border-radius: 9px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s, background .15s; }
+.owner-opt:hover { border-color: var(--border-strong); }
+.owner-opt input { margin-top: 2px; accent-color: var(--accent); flex-shrink: 0; }
+.owner-opt:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.owner-opt b { display: block; font-size: 12.5px; font-weight: 600; }
+.owner-opt small { display: block; font-size: 11.5px; color: var(--text-3); }
+@media (max-width: 640px) { .owner-groups { grid-template-columns: minmax(0, 1fr); } }
+
 /* Barras de progresso */
 .progress { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .progress .track { flex: 1; height: 8px; border-radius: 6px; background: var(--surface-3); overflow: hidden; position: relative; }

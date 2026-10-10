@@ -117,7 +117,7 @@
         return '<div class="tl-item ' + (over ? 'overdue' : '') + '" role="button" tabindex="0" data-act="open-item" data-kind="' + kind + '" data-id="' + esc(item.id) + '">' +
           '<div class="tl-date"><b class="num">' + d.getDate() + '</b><span>' + MONTHS[d.getMonth()] + '</span></div>' +
           '<div style="min-width:0"><div class="t">' + esc(item.title) + '</div><div class="d">' + esc(U.relDays(item.deadline)) + '</div></div>' +
-          U.person(item.owner, true) + '</div>';
+          U.people(S.ownersOf(item), true) + '</div>';
       }).join('') + '</div>' : '<p class="faint" style="font-size:13px">Nenhuma entrega com prazo pendente.</p>') + '</div>';
 
     return hero + stats +
@@ -204,14 +204,20 @@
   // 4. PLANOS DE AÇÃO
   // ===========================================================================
 
-  /** Aplica os filtros (objetivo, KR, status) e ordena por prazo, concluídos no fim. */
+  /**
+   * Aplica os filtros (objetivo, KR, status, pessoa, área) e ordena por prazo,
+   * com concluídos no fim. Pessoa e área valem se QUALQUER responsável do
+   * plano for daquela pessoa/área.
+   */
   function filteredActions() {
     const f = S.ui.actionFilters;
     const dl = (a) => a.deadline || '9999';
     return S.state.actions
       .filter((a) => (!f.objectiveId || a.objectiveId === f.objectiveId) &&
         (!f.krId || a.krId === f.krId) &&
-        (!f.status || (f.status === 'overdue' ? S.isOverdue(a) : a.status === f.status)))
+        (!f.status || (f.status === 'overdue' ? S.isOverdue(a) : a.status === f.status)) &&
+        (!f.person || (f.person === '__none' ? !a.owners.length : S.peopleOfRoles(a.owners).indexOf(f.person) >= 0)) &&
+        (!f.area || S.areasOfRoles(a.owners).indexOf(f.area) >= 0))
       .sort((x, y) => ((x.status === 'done') - (y.status === 'done')) || (dl(x) < dl(y) ? -1 : dl(x) > dl(y) ? 1 : 0));
   }
 
@@ -220,12 +226,14 @@
     const f = S.ui.actionFilters;
     const view = S.ui.actionView;
     const list = filteredActions();
-    const active = f.objectiveId || f.krId || f.status;
+    const active = f.objectiveId || f.krId || f.status || f.person || f.area;
 
     const filters =
       '<select class="select" id="flt-obj" data-filter="objectiveId" aria-label="Filtrar por objetivo">' + opt('', 'Todos os objetivos', f.objectiveId) + s.objectives.map((o, i) => opt(o.id, 'Objetivo ' + (i + 1) + ' · ' + o.title, f.objectiveId)).join('') + '</select>' +
       '<select class="select" id="flt-kr" data-filter="krId" aria-label="Filtrar por KR">' + opt('', 'Todos os KRs', f.krId) + s.krs.filter((k) => !f.objectiveId || k.objectiveId === f.objectiveId).map((k) => opt(k.id, krLabel(k) + ' · ' + k.title, f.krId)).join('') + '</select>' +
       '<select class="select" id="flt-status" data-filter="status" aria-label="Filtrar por status">' + opt('', 'Todos os status', f.status) + Object.keys(S.STATUS).map((k) => opt(k, S.STATUS[k], f.status)).join('') + opt('overdue', 'Atrasados', f.status) + '</select>' +
+      '<select class="select" id="flt-person" data-filter="person" aria-label="Filtrar por pessoa">' + opt('', 'Todas as pessoas', f.person) + Object.keys(S.ORG_PEOPLE).map((k) => opt(k, S.ORG_PEOPLE[k].name, f.person)).join('') + opt('__none', 'Sem responsável', f.person) + '</select>' +
+      '<select class="select" id="flt-area" data-filter="area" aria-label="Filtrar por área">' + opt('', 'Todas as áreas', f.area) + [S.ORG.top.name].concat(S.ORG.areas.map((a) => a.name)).map((n) => opt(n, n, f.area)).join('') + '</select>' +
       (active ? '<button class="btn btn-ghost btn-sm" data-act="clear-filters">' + ic('x', 14) + ' Limpar</button>' : '');
     const right =
       '<div class="seg" aria-label="Modo de visualização">' +
@@ -257,7 +265,7 @@
   function actionRow(a) {
     return '<tr data-act="edit-action" data-id="' + esc(a.id) + '" style="cursor:pointer">' +
       '<td class="title-cell">' + esc(a.title) + '</td>' +
-      '<td>' + U.person(a.owner) + '</td>' +
+      '<td>' + U.people(a.owners) + '</td>' +
       '<td>' + U.dateTag(a.deadline, a.status) + '</td>' +
       '<td>' + U.priorityBadge(a.priority) + '</td>' +
       '<td>' + U.statusSelect(a.status, 'data-status-for="actions" data-id="' + esc(a.id) + '"') + '</td>' +
@@ -305,7 +313,7 @@
       '<div class="row"><span class="t">' + esc(a.title) + '</span>' + U.priorityBadge(a.priority) + '</div>' +
       (kr ? '<div class="acard-kr" title="' + esc(kr.title) + '"><i class="obj-dot" style="background:' + esc(o ? o.color : 'var(--st-idle)') + '"></i><span>' + esc(kr.title) + '</span></div>' : '') +
       U.progress(S.actionProgress(a), { size: 'sm', status: a.status }) +
-      '<div class="row">' + U.person(a.owner) + U.dateTag(a.deadline, a.status) + '</div>' +
+      '<div class="row">' + U.people(a.owners) + U.dateTag(a.deadline, a.status) + '</div>' +
       '</div>';
   }
 
@@ -385,7 +393,7 @@
   function roleCard(r) {
     const o = S.owner(r.id);
     const s = S.state;
-    const n = s.objectives.filter((x) => x.owner === r.id).length + s.krs.filter((x) => x.owner === r.id).length + s.actions.filter((x) => x.owner === r.id).length;
+    const n = s.objectives.filter((x) => x.owner === r.id).length + s.krs.filter((x) => x.owner === r.id).length + s.actions.filter((x) => S.ownersOf(x).indexOf(r.id) >= 0).length;
     return '<div class="role-card">' +
       '<div class="role-title">' + esc(r.title) + '</div>' +
       '<div class="role-who">' + U.avatars(o.holders) + '<span>' + esc(o.sub) + '</span></div>' +

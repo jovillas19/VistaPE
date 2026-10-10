@@ -263,7 +263,7 @@
       const objectiveId = krId.split('_')[1]; // "kr_o1_1" → "o1"
       OFFICIAL_ACTIONS[krId].forEach((title, i) => out.push({
         id: 'pa_' + krId + '_' + (i + 1), title, description: '', objectiveId, krId,
-        owner: '', deadline: '', priority: 'medium', status: 'not_started', progress: 0, notes: '', checklist: [],
+        owners: [], deadline: '', priority: 'medium', status: 'not_started', progress: 0, notes: '', checklist: [],
       }));
     });
     return out;
@@ -375,7 +375,12 @@
     s.company = Object.assign({}, base.company, s.company || {});
     s.mvv = Object.assign({ mission: '', vision: '', values: [] }, s.mvv || {});
     ['people', 'krs', 'kpis', 'actions'].forEach((k) => { if (!Array.isArray(s[k])) s[k] = []; });
-    s.actions.forEach((a) => { if (!Array.isArray(a.checklist)) a.checklist = []; });
+    s.actions.forEach((a) => {
+      if (!Array.isArray(a.checklist)) a.checklist = [];
+      // planos aceitam vários responsáveis: o campo único antigo vira lista
+      if (!Array.isArray(a.owners)) a.owners = a.owner ? [a.owner] : [];
+      delete a.owner;
+    });
     s.kpis.forEach((k) => { if (!Array.isArray(k.history)) k.history = []; });
     migrateSync(s);
     syncDerived(s);
@@ -422,14 +427,15 @@
     theme: 'system',            // 'system' | 'light' | 'dark'
     collapsed: {},              // { [objectiveId]: true } objetivos recolhidos
     actionView: 'table',        // 'table' | 'board'
-    actionFilters: { objectiveId: '', krId: '', status: '' },
+    actionFilters: { objectiveId: '', krId: '', status: '', person: '', area: '' },
   }, readLS(UI_KEY) || {});
   // filtros removidos da interface (responsável, busca) não podem ficar presos
-  ui.actionFilters = { objectiveId: ui.actionFilters.objectiveId || '', krId: ui.actionFilters.krId || '', status: ui.actionFilters.status || '' };
+  const af = ui.actionFilters || {};
+  ui.actionFilters = { objectiveId: af.objectiveId || '', krId: af.krId || '', status: af.status || '', person: af.person || '', area: af.area || '' };
   if (boot.upgraded) {
     // filtros e grupos recolhidos apontavam para os OKRs anteriores
     ui.collapsed = {};
-    ui.actionFilters = { objectiveId: '', krId: '', status: '' };
+    ui.actionFilters = { objectiveId: '', krId: '', status: '', person: '', area: '' };
     writeLS(UI_KEY, ui);
   }
 
@@ -520,7 +526,8 @@
         [...s.actions, ...s.kpis].forEach((x) => { if (x.krId === id) x.krId = ''; });
       }
       if (collection === 'people') {
-        [...s.objectives, ...s.krs, ...s.actions].forEach((x) => { if (x.owner === id) x.owner = ''; });
+        [...s.objectives, ...s.krs].forEach((x) => { if (x.owner === id) x.owner = ''; });
+        s.actions.forEach((a) => { a.owners = a.owners.filter((o) => o !== id); });
       }
     });
   }
@@ -578,6 +585,44 @@
   // ---------------------------------------------------------------------------
 
   const byId = (collection, id) => state[collection].find((x) => x.id === id) || null;
+
+  /**
+   * Responsáveis de qualquer item como lista de ids de cargo: planos de ação
+   * têm vários (`owners`); objetivos e KRs têm um (`owner`).
+   * @param {object} item
+   * @returns {string[]}
+   */
+  function ownersOf(item) {
+    if (!item) return [];
+    if (Array.isArray(item.owners)) return item.owners;
+    return item.owner ? [item.owner] : [];
+  }
+
+  /**
+   * Pessoas (chaves de ORG_PEOPLE) que ocupam os cargos informados.
+   * @param {string[]} ids - Ids de cargo.
+   * @returns {string[]} Ex.: ['gabriel', 'gustavo'].
+   */
+  function peopleOfRoles(ids) {
+    const roles = orgRoles();
+    const out = [];
+    ids.forEach((id) => {
+      const r = roles.find((x) => x.id === id);
+      if (r) r.holders.forEach((h) => { if (out.indexOf(h) < 0) out.push(h); });
+    });
+    return out;
+  }
+
+  /** Áreas (nomes) dos cargos informados, sem repetição. */
+  function areasOfRoles(ids) {
+    const roles = orgRoles();
+    const out = [];
+    ids.forEach((id) => {
+      const r = roles.find((x) => x.id === id);
+      if (r && out.indexOf(r.area) < 0) out.push(r.area);
+    });
+    return out;
+  }
 
   /**
    * Resolve um responsável para exibição: cargo da macroestrutura (com seus
@@ -726,7 +771,7 @@
     state.krs.filter((k) => !k.owner).forEach((k) => out.push({
       type: 'warn', kind: 'krs', id: k.id, icon: 'userx', title: k.title, detail: 'KR sem responsável',
     }));
-    state.actions.filter((a) => !a.owner && a.status !== 'done').forEach((a) => out.push({
+    state.actions.filter((a) => !ownersOf(a).length && a.status !== 'done').forEach((a) => out.push({
       type: 'warn', kind: 'actions', id: a.id, icon: 'userx', title: a.title, detail: 'Plano de ação sem responsável',
     }));
     state.actions.filter((a) => !a.deadline && a.status !== 'done').forEach((a) => out.push({
@@ -760,7 +805,7 @@
   const objectiveIndex = (id) => state.objectives.findIndex((o) => o.id === id) + 1;
 
   window.Store = {
-    STATUS, PRIORITY, OBJECTIVE_COLORS, ORG, ORG_PEOPLE, orgRoles, owner,
+    STATUS, PRIORITY, OBJECTIVE_COLORS, ORG, ORG_PEOPLE, orgRoles, owner, ownersOf, peopleOfRoles, areasOfRoles,
     get state() { return state; },
     get persisted() { return persisted; },
     ui, saveUI,
