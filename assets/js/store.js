@@ -131,7 +131,54 @@
       kpi('k5', 'Nº de fotógrafos em SSA', 'Fotógrafos capacitados no padrão VISTA em Salvador.',
         'Fotógrafos com capacitação concluída em SSA', 1, 'fotógrafo', 'o2', 'kr_o2_2'),
     ];
-    return { objectives, krs, kpis, actions: [] };
+    return { objectives, krs, kpis, actions: officialActions() };
+  }
+
+  /**
+   * Planos de ação definidos pela equipe (out/2026), por KR. Entram sem
+   * responsável e sem prazo: a equipe completa pelo painel.
+   * Para acrescentar planos a todos os navegadores, inclua-os aqui e
+   * incremente ACTIONS_VERSION.
+   */
+  const OFFICIAL_ACTIONS = {
+    kr_o1_1: [
+      'Montar 1 roteiro de curso',
+      'Gravar x aulas',
+      'Preparar 1 material de apoio',
+      'Montar plano de carreira',
+      'Entrar em contato com 10 fotógrafos',
+      'Oferecer 2 aulas',
+      'Entrar em contato com 5 corretores',
+      'Disponibilizar 3 residências para treino',
+      'Coletar 1 feedback',
+    ],
+    kr_o1_2: [
+      'Montar 1 apresentação comercial base',
+      'Postar 10 reels',
+      'Mapear 20 administradores de Airbnb',
+      'Mapear 20 imobiliárias',
+      'Mapear 50 corretores',
+      'Entrar em contato com 20 administradores de Airbnb',
+    ],
+  };
+  /** Versão da lista oficial de planos; ao incrementar, os novos chegam a todos os navegadores. */
+  const ACTIONS_VERSION = 1;
+
+  /**
+   * Planos oficiais no formato do estado. Ids estáveis ("pa_<kr>_<n>")
+   * evitam duplicar planos ao aplicar a lista em dados já salvos.
+   * @returns {object[]}
+   */
+  function officialActions() {
+    const out = [];
+    Object.keys(OFFICIAL_ACTIONS).forEach((krId) => {
+      const objectiveId = krId.split('_')[1]; // "kr_o1_1" → "o1"
+      OFFICIAL_ACTIONS[krId].forEach((title, i) => out.push({
+        id: 'pa_' + krId + '_' + (i + 1), title, description: '', objectiveId, krId,
+        owner: '', deadline: '', priority: 'medium', status: 'not_started', progress: 0, notes: '', checklist: [],
+      }));
+    });
+    return out;
   }
 
   /**
@@ -154,6 +201,7 @@
       company: { name: 'VISTA studios', cycle: 'Q4 2026', cycleStart: '2026-10-01', cycleEnd: '2026-12-31' },
       mvv: officialMvv(),
       mvvVersion: MVV_VERSION,
+      actionsVersion: ACTIONS_VERSION,
       people,
     }, strategySeed());
   }
@@ -270,6 +318,18 @@
   if (boot.state && !(boot.state.mvvVersion >= MVV_VERSION)) {
     boot.state.mvv = officialMvv();
     boot.state.mvvVersion = MVV_VERSION;
+  }
+  // acrescenta os planos oficiais uma vez por versão, sem mexer nos existentes
+  if (boot.state && !(boot.state.actionsVersion >= ACTIONS_VERSION)) {
+    const have = new Set(boot.state.actions.map((a) => a.id));
+    const krs = new Set(boot.state.krs.map((k) => k.id));
+    officialActions().forEach((a) => {
+      if (have.has(a.id)) return;
+      // KR apagado neste navegador: o plano entra sem vínculo em vez de órfão
+      if (!krs.has(a.krId)) { a.krId = ''; a.objectiveId = ''; }
+      boot.state.actions.push(a);
+    });
+    boot.state.actionsVersion = ACTIONS_VERSION;
   }
   let state = boot.state || seed();
   let persisted = writeLS(STORAGE_KEY, state);
