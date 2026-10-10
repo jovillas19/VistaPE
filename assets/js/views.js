@@ -362,13 +362,6 @@
       '<div class="field"><label for="c-end">Fim</label><input class="input" type="date" id="c-end" name="cycleEnd" value="' + esc(c.cycleEnd) + '" required></div>' +
       '</div><div style="display:flex;justify-content:flex-end;margin-top:18px"><button class="btn btn-primary" type="submit">' + ic('check', 16) + ' Salvar</button></div></form>';
 
-    const people = '<div class="card card-pad">' + cardHead('Responsáveis', '<button class="btn btn-sm" data-act="new-person">' + ic('plus', 14) + ' Adicionar</button>') +
-      (s.people.length ? '<div class="people-list">' + s.people.map((p) =>
-        '<div class="people-row"><span class="avatar" style="background:' + esc(p.color) + '">' + esc(U.initials(p.name)) + '</span>' +
-        '<div style="min-width:0"><div class="nm">' + esc(p.name) + '</div>' + (p.role ? '<div class="rl">' + esc(p.role) + '</div>' : '') + '</div>' +
-        '<button class="icon-btn sm" data-act="edit-person" data-id="' + esc(p.id) + '" aria-label="Editar responsável">' + ic('edit', 15) + '</button></div>').join('') + '</div>'
-        : '<p class="faint" style="font-size:13px">Nenhum responsável cadastrado.</p>') + '</div>';
-
     const data = '<div class="card card-pad">' + cardHead('Backup') +
       '<div class="setting-row"><div class="t">Exportar</div>' +
       '<span style="display:flex;gap:6px"><button class="btn btn-sm" data-act="export-json">' + ic('download', 14) + ' Baixar</button><button class="btn btn-sm" data-act="copy-json">' + ic('copy', 14) + ' Copiar</button></span></div>' +
@@ -377,7 +370,50 @@
       (S.persisted ? '' : '<p class="hint" style="margin-top:10px">O navegador está bloqueando o salvamento: exporte antes de fechar.</p>') +
       '</div>';
 
-    return '<div class="settings-grid"><div class="stack">' + company + '</div><div class="stack">' + people + data + '</div></div>';
+    return '<div class="settings-grid"><div class="stack">' + company + '</div><div class="stack">' + data + '</div></div>';
+  }
+
+  // ===========================================================================
+  // 7. MACROESTRUTURA
+  // ===========================================================================
+
+  /**
+   * Card de cargo: título, ocupantes e, quando houver, o que o cargo faz.
+   * Mostra quantos objetivos/KRs/planos estão sob esse cargo.
+   * @param {object} r - Cargo da macroestrutura.
+   */
+  function roleCard(r) {
+    const o = S.owner(r.id);
+    const s = S.state;
+    const n = s.objectives.filter((x) => x.owner === r.id).length + s.krs.filter((x) => x.owner === r.id).length + s.actions.filter((x) => x.owner === r.id).length;
+    return '<div class="role-card">' +
+      '<div class="role-title">' + esc(r.title) + '</div>' +
+      '<div class="role-who">' + U.avatars(o.holders) + '<span>' + esc(o.sub) + '</span></div>' +
+      (r.description ? '<p class="role-desc">' + esc(r.description) + '</p>' : '') +
+      (n ? '<div class="role-load">' + n + (n === 1 ? ' item atribuído' : ' itens atribuídos') + '</div>' : '') +
+      '</div>';
+  }
+
+  /** Organograma: Estratégia no topo, áreas em colunas e frentes abaixo. */
+  function structure() {
+    const org = S.ORG;
+    const top = '<section class="org-top card"><h3 class="org-area-name">' + esc(org.top.name) + '</h3>' +
+      '<div class="org-top-roles">' + org.top.roles.map(roleCard).join('') + '</div></section>';
+    const areas = '<div class="org-areas">' + org.areas.map((a) =>
+      '<section class="org-col"><div class="card org-area"><h3 class="org-area-name">' + esc(a.name) + '</h3>' + roleCard(a.lead) + '</div>' +
+      '<div class="org-units">' + a.units.map((u) =>
+        '<div class="org-unit"><div class="org-unit-name">' + esc(u.name) + '</div>' + roleCard(u.role) + '</div>').join('') + '</div>' +
+      '</section>').join('') + '</div>';
+
+    // quem ocupa o quê: leitura rápida por pessoa
+    const byPerson = Object.keys(S.ORG_PEOPLE).map((key) => {
+      const p = S.ORG_PEOPLE[key];
+      const roles = S.orgRoles().filter((r) => r.holders.indexOf(key) >= 0).map((r) => r.title);
+      return '<div class="person-roles">' + U.avatars([p]) + '<div><b>' + esc(p.name) + '</b><span>' + esc(roles.join(' · ')) + '</span></div></div>';
+    }).join('');
+
+    return '<div class="org">' + top + '<div class="org-stem"></div>' + areas + '</div>' +
+      '<div class="card card-pad">' + cardHead('Cargos por pessoa') + '<div class="people-roles">' + byPerson + '</div></div>';
   }
 
   window.Views = {
@@ -386,6 +422,7 @@
     indicadores: { title: 'Indicadores', render: indicators },
     planos: { title: 'Planos de ação', render: actions },
     mvv: { title: 'Missão, Visão e Valores', render: mvv },
+    estrutura: { title: 'Macroestrutura', render: structure },
     configuracoes: { title: 'Configurações', render: settings },
     mvvCompletion,
   };

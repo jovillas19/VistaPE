@@ -389,6 +389,14 @@ svg { flex-shrink: 0; }
 .person.none { color: var(--st-warn); font-weight: 600; }
 .person.none .avatar { background: var(--st-warn-bg); color: var(--st-warn); box-shadow: inset 0 0 0 1.5px currentColor; }
 
+/* Responsável = cargo: avatares dos ocupantes sobrepostos + cargo e nomes */
+.avatars { display: inline-flex; flex-shrink: 0; }
+.avatars .avatar + .avatar { margin-left: -8px; }
+.person .avatars .avatar { overflow: visible; }
+.person .who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.person .who .role { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.person .who small { font-size: 11.5px; font-weight: 500; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Barras de progresso */
 .progress { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .progress .track { flex: 1; height: 8px; border-radius: 6px; background: var(--surface-3); overflow: hidden; position: relative; }
@@ -747,6 +755,38 @@ svg { flex-shrink: 0; }
 .setting-row:last-child { border-bottom: 0; }
 .setting-row .t { font-weight: 700; }
 .setting-row .d { font-size: 12.5px; color: var(--text-2); }
+
+/* --- Macroestrutura (organograma) --- */
+.org { display: flex; flex-direction: column; }
+.org-top { padding: 18px 22px; max-width: 640px; width: 100%; margin: 0 auto; border-top: 3px solid var(--accent); }
+.org-top-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.org-area-name { font-size: 17px; font-weight: 600; margin-bottom: 12px; text-align: center; }
+/* conectores: tronco central → barra horizontal → uma haste por área */
+.org-stem { width: 2px; height: 22px; background: var(--border-strong); margin: 0 auto; }
+.org-areas { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding-top: 22px; }
+.org-areas::before { content: ""; position: absolute; top: 0; left: 12.5%; right: 12.5%; height: 2px; background: var(--border-strong); }
+.org-col { position: relative; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.org-col::before { content: ""; position: absolute; top: -22px; left: calc(50% - 1px); width: 2px; height: 22px; background: var(--border-strong); }
+.org-area { padding: 16px; background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.org-units { display: flex; flex-direction: column; gap: 10px; margin-left: 14px; padding-left: 14px; border-left: 2px solid var(--border); }
+.org-unit-name { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-3); margin-bottom: 6px; }
+.role-card { background: var(--surface-solid); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.role-title { font-family: var(--font-display); font-weight: 600; font-size: 14.5px; }
+.role-who { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-2); min-width: 0; }
+.role-desc { font-size: 12.5px; color: var(--text-2); }
+.role-load { font-size: 11.5px; color: var(--accent-text); font-weight: 600; }
+.people-roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.person-roles { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); min-width: 0; }
+.person-roles b { display: block; font-size: 14px; }
+.person-roles span { font-size: 12.5px; color: var(--text-2); }
+@media (max-width: 1100px) {
+  .org-areas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .org-areas::before, .org-col::before, .org-stem { display: none; }
+  .org-areas { padding-top: 16px; }
+}
+@media (max-width: 640px) {
+  .org-areas, .org-top-roles, .people-roles { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* 6. OVERLAYS -------------------------------------------------------------- */
 .scrim { position: fixed; inset: 0; background: var(--overlay); backdrop-filter: blur(3px); z-index: 80; opacity: 0; transition: opacity .25s var(--ease); }

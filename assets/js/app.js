@@ -23,6 +23,7 @@
     { id: 'indicadores', label: 'Indicadores', icon: 'pulse' },
     { id: 'planos', label: 'Planos de ação', icon: 'list' },
     { id: 'mvv', label: 'MVV', icon: 'compass' },
+    { id: 'estrutura', label: 'Macroestrutura', icon: 'users' },
   ];
   const DEFAULT_ROUTE = 'dashboard';
 
@@ -234,8 +235,6 @@
     },
 
     // Configurações
-    'new-person': () => F.editPerson(),
-    'edit-person': (el) => F.editPerson(S.byId('people', el.dataset.id)),
     'export-json': exportJSON,
     'copy-json': copyJSON,
 

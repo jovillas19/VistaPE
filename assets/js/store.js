@@ -47,8 +47,6 @@
    * quando houver muitos objetivos.
    */
   const OBJECTIVE_COLORS = ['#0c4f5b', '#16899a', '#35bfae', '#2a6fb0', '#7a5cc4', '#c4732a'];
-  /** Cores de avatar para responsáveis. */
-  const PERSON_COLORS = ['#0c4f5b', '#16899a', '#2a8f7e', '#2a6fb0', '#6d55b8', '#b0603a', '#5b7480'];
 
   /**
    * Gera um identificador curto e único o bastante para uso local.
@@ -69,6 +67,80 @@
   // ---------------------------------------------------------------------------
   // Dados iniciais
   // ---------------------------------------------------------------------------
+
+  /**
+   * Sócios que ocupam os cargos da macroestrutura. A cor identifica a
+   * pessoa nos avatares em todo o painel.
+   */
+  const ORG_PEOPLE = {
+    gabriel: { name: 'Gabriel Azevedo', color: '#16899a' },
+    jorge: { name: 'Jorge Vilas', color: '#2a6fb0' },
+    gustavo: { name: 'Gustavo Sarkis', color: '#b0603a' },
+  };
+
+  /**
+   * Macroestrutura oficial (out/2026): Estratégia no topo e quatro áreas,
+   * cada uma com o cargo de liderança e duas frentes. Os cargos são as
+   * opções de responsável de objetivos, KRs e planos de ação.
+   * Para mudar cargos ou ocupantes, edite aqui. `description` recebe o
+   * que cada cargo faz e aparece na aba Macroestrutura quando preenchida.
+   */
+  const ORG = {
+    top: {
+      name: 'Estratégia',
+      roles: [
+        { id: 'r_ceo', title: 'CEO', holders: ['gabriel'], description: '' },
+        { id: 'r_vp_estrategia', title: 'VP de Estratégia', holders: ['jorge'], description: '' },
+      ],
+    },
+    areas: [
+      {
+        name: 'Escola',
+        lead: { id: 'r_dir_pd', title: 'Diretor de P&D', holders: ['gustavo'], description: '' },
+        units: [
+          { name: 'Técnica', role: { id: 'r_ger_capacitacao', title: 'Gerente de Capacitação', holders: ['gabriel'], description: '' } },
+          { name: 'Inovação', role: { id: 'r_ger_inovacao', title: 'Gerente de Inovação', holders: ['jorge'], description: '' } },
+        ],
+      },
+      {
+        name: 'Comercial',
+        lead: { id: 'r_cso', title: 'CSO', holders: ['gabriel'], description: '' },
+        units: [
+          { name: 'Vendas', role: { id: 'r_ger_vendas', title: 'Gerente de Vendas', holders: ['gabriel', 'gustavo'], description: '' } },
+          { name: 'CX', role: { id: 'r_ger_cx', title: 'Gerente de CX', holders: ['gustavo'], description: '' } },
+        ],
+      },
+      {
+        name: 'Marketing',
+        lead: { id: 'r_cmo', title: 'CMO', holders: ['jorge'], description: '' },
+        units: [
+          { name: 'Conteúdo', role: { id: 'r_ger_conteudo', title: 'Gerente de Conteúdo', holders: ['jorge'], description: '' } },
+          { name: 'Comunidade', role: { id: 'r_ger_comunidade', title: 'Gerente de Comunidade', holders: ['gabriel'], description: '' } },
+        ],
+      },
+      {
+        name: 'Operações',
+        lead: { id: 'r_coo', title: 'COO', holders: ['gustavo'], description: '' },
+        units: [
+          { name: 'Operação', role: { id: 'r_ger_operacoes', title: 'Gerente de Operações', holders: ['gustavo'], description: '' } },
+          { name: 'Financeiro', role: { id: 'r_ger_financeiro', title: 'Gerente Financeiro', holders: ['jorge'], description: '' } },
+        ],
+      },
+    ],
+  };
+
+  /**
+   * Todos os cargos em lista plana, na ordem do organograma.
+   * @returns {Array<{id:string,title:string,holders:string[],description:string,area:string,unit:string}>}
+   */
+  function orgRoles() {
+    const out = ORG.top.roles.map((r) => Object.assign({ area: ORG.top.name, unit: '' }, r));
+    ORG.areas.forEach((a) => {
+      out.push(Object.assign({ area: a.name, unit: '' }, a.lead));
+      a.units.forEach((u) => out.push(Object.assign({ area: a.name, unit: u.name }, u.role)));
+    });
+    return out;
+  }
 
   /**
    * Missão, visão e valores oficiais da VISTA studios. Ficam no código para
@@ -198,17 +270,13 @@
   }
 
   /**
-   * Estado completo inicial: empresa, ciclo Q4 2026, responsáveis por área,
-   * MVV em branco e os OKRs de {@link strategySeed}.
+   * Estado completo inicial: empresa, ciclo Q4 2026, MVV oficial e os OKRs
+   * de {@link strategySeed}. Responsáveis vêm dos cargos da macroestrutura
+   * (ORG); `people` existe só para responsáveis antigos salvos no navegador.
    * @returns {object}
    */
   function seed() {
-    const people = [
-      { id: 'p_dir', name: 'Direção', role: 'Sócios fundadores', color: PERSON_COLORS[0] },
-      { id: 'p_com', name: 'Comercial', role: 'Vendas e parcerias', color: PERSON_COLORS[1] },
-      { id: 'p_ops', name: 'Operações', role: 'Fotografia e edição', color: PERSON_COLORS[3] },
-      { id: 'p_cs', name: 'Sucesso do Cliente', role: 'Atendimento e pós-venda', color: PERSON_COLORS[4] },
-    ];
+    const people = [];
     return Object.assign({
       version: SCHEMA_VERSION,
       seedVersion: SEED_VERSION,
@@ -511,6 +579,25 @@
 
   const byId = (collection, id) => state[collection].find((x) => x.id === id) || null;
 
+  /**
+   * Resolve um responsável para exibição: cargo da macroestrutura (com seus
+   * ocupantes) ou, para dados antigos, um responsável cadastrado no navegador.
+   * @param {string} id - Id do cargo (ex.: "r_cso") ou do responsável antigo.
+   * @returns {{title:string, sub:string, holders:Array<{name:string,color:string}>}|null}
+   * @example owner('r_ger_vendas') // { title: 'Gerente de Vendas', sub: 'Gabriel Azevedo e Gustavo Sarkis', ... }
+   */
+  function owner(id) {
+    if (!id) return null;
+    const r = orgRoles().find((x) => x.id === id);
+    if (r) {
+      const holders = r.holders.map((h) => ORG_PEOPLE[h]);
+      const names = holders.map((h) => h.name);
+      return { title: r.title, sub: names.length > 1 ? names.slice(0, -1).join(', ') + ' e ' + names[names.length - 1] : names[0], holders };
+    }
+    const p = byId('people', id);
+    return p ? { title: p.name, sub: p.role || '', holders: [{ name: p.name, color: p.color || '#5b7480' }] } : null;
+  }
+
   /** Data local de hoje em "YYYY-MM-DD" (sem efeito de fuso). */
   function todayISO() {
     const d = new Date();
@@ -673,7 +760,7 @@
   const objectiveIndex = (id) => state.objectives.findIndex((o) => o.id === id) + 1;
 
   window.Store = {
-    STATUS, PRIORITY, OBJECTIVE_COLORS, PERSON_COLORS,
+    STATUS, PRIORITY, OBJECTIVE_COLORS, ORG, ORG_PEOPLE, orgRoles, owner,
     get state() { return state; },
     get persisted() { return persisted; },
     ui, saveUI,

@@ -175,15 +175,25 @@
       '</select></span>';
   }
 
+  /** Avatares sobrepostos dos ocupantes de um cargo (cor fixa por pessoa). */
+  function avatars(holders) {
+    return '<span class="avatars">' + holders.map((h) =>
+      '<span class="avatar" style="background:' + esc(h.color) + '" title="' + esc(h.name) + '">' + esc(initials(h.name)) + '</span>').join('') + '</span>';
+  }
+
   /**
-   * Avatar + nome do responsável; destaca em âmbar quando não há responsável.
-   * @param {string} personId
-   * @param {boolean} [compact] - Mostra só o avatar (com tooltip).
+   * Responsável (cargo da macroestrutura): avatares dos ocupantes + cargo,
+   * com os nomes logo abaixo. Destaca em âmbar quando não há responsável.
+   * @param {string} ownerId - Id do cargo (ou de um responsável antigo).
+   * @param {boolean} [compact] - Só os avatares, com cargo e nomes no tooltip.
+   * @returns {string}
    */
-  function person(personId, compact) {
-    const p = personId ? S.byId('people', personId) : null;
-    if (!p) return '<span class="person none" title="Sem responsável"><span class="avatar">?</span>' + (compact ? '' : '<span>Sem responsável</span>') + '</span>';
-    return '<span class="person" title="' + esc(p.name) + '"><span class="avatar" style="background:' + esc(p.color) + '">' + esc(initials(p.name)) + '</span>' + (compact ? '' : '<span>' + esc(p.name) + '</span>') + '</span>';
+  function person(ownerId, compact) {
+    const o = S.owner(ownerId);
+    if (!o) return '<span class="person none" title="Sem responsável"><span class="avatar">?</span>' + (compact ? '' : '<span>Sem responsável</span>') + '</span>';
+    const tip = o.title + (o.sub ? ' · ' + o.sub : '');
+    return '<span class="person" title="' + esc(tip) + '">' + avatars(o.holders) +
+      (compact ? '' : '<span class="who"><span class="role">' + esc(o.title) + '</span>' + (o.sub ? '<small>' + esc(o.sub) + '</small>' : '') + '</span>') + '</span>';
   }
 
   /**
@@ -447,7 +457,7 @@
 
   window.UI = {
     esc, icon, logoMark, fmtDate, fmtNum, fmtValue, isMoney, pct, relDays, initials,
-    statusBadge, priorityBadge, statusSelect, person, dateTag, progress,
+    statusBadge, priorityBadge, statusSelect, person, avatars, dateTag, progress,
     empty, ring, sparkline,
     openDrawer, closeDrawer, openModal, closeModal, confirmDelete, toast,
     get drawerOpen() { return !!drawerEl; },

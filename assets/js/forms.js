@@ -49,8 +49,26 @@
   const section = (label) => '<div class="form-section full">' + esc(label) + '</div>';
   const grid = (inner) => '<div class="form-grid">' + inner + '</div>';
 
+  /**
+   * Campo de responsável: cargos da macroestrutura agrupados por área, cada
+   * um com seus ocupantes ("CSO — Gabriel Azevedo"). Um responsável antigo,
+   * salvo antes da macroestrutura, continua visível enquanto estiver atribuído.
+   * @param {string} value - Id do cargo atual.
+   * @returns {string} HTML do campo.
+   */
+  function ownerSelect(value) {
+    const o = (v, l) => '<option value="' + esc(v) + '"' + (v === (value || '') ? ' selected' : '') + '>' + esc(l) + '</option>';
+    const groups = {};
+    S.orgRoles().forEach((r) => { (groups[r.area] = groups[r.area] || []).push(r); });
+    let html = o('', 'Sem responsável') + Object.keys(groups).map((area) =>
+      '<optgroup label="' + esc(area) + '">' + groups[area].map((r) => o(r.id, r.title + ' — ' + S.owner(r.id).sub)).join('') + '</optgroup>').join('');
+    const legacy = value && !S.orgRoles().some((r) => r.id === value) ? S.byId('people', value) : null;
+    if (legacy) html += '<optgroup label="Responsável anterior">' + o(legacy.id, legacy.name) + '</optgroup>';
+    return '<div class="field"><label for="' + fid('owner') + '">Responsável</label>' +
+      '<select class="select" id="' + fid('owner') + '" name="owner">' + html + '</select></div>';
+  }
+
   // Opções reutilizadas
-  const peopleOpts = () => [['', 'Sem responsável']].concat(S.state.people.map((p) => [p.id, p.name]));
   const statusOpts = () => Object.keys(S.STATUS).map((k) => [k, S.STATUS[k]]);
   const priorityOpts = () => Object.keys(S.PRIORITY).map((k) => [k, S.PRIORITY[k]]);
   const objectiveOpts = (allowNone) => (allowNone ? [['', 'Sem objetivo vinculado']] : []).concat(
@@ -119,7 +137,7 @@
       body: grid(
         text('title', 'Nome do objetivo', obj.title, { required: true, full: true, placeholder: 'Ex.: Validar a viabilidade do modelo de negócio' }) +
         area('description', 'Descrição', obj.description, { placeholder: 'Por que este objetivo importa agora?' }) +
-        select('owner', 'Responsável', obj.owner, peopleOpts()) +
+        ownerSelect(obj.owner) +
         text('deadline', 'Prazo', obj.deadline, { type: 'date' }) +
         swatches +
         area('notes', 'Observações', obj.notes, { rows: 2, placeholder: 'Premissas, riscos, contexto…' })
@@ -168,7 +186,7 @@
         text('unit', 'Unidade de medida', kr.unit, { placeholder: 'clientes, %, contratos…' }) +
         '<div class="field full"><span class="label">Prévia do progresso</span><div id="kr-preview"></div></div>' +
         section('Execução') +
-        select('owner', 'Responsável', kr.owner, peopleOpts()) +
+        ownerSelect(kr.owner) +
         text('deadline', 'Prazo', kr.deadline, { type: 'date' }) +
         select('status', 'Status', kr.status, statusOpts(), { full: true }) +
         area('notes', 'Observações', kr.notes, { rows: 2 })
@@ -317,7 +335,7 @@
       select('objectiveId', 'Objetivo', a.objectiveId, objectiveOpts(true)) +
       select('krId', 'Key Result', a.krId, krOpts(a.objectiveId)) +
       section('Execução') +
-      select('owner', 'Responsável', a.owner, peopleOpts()) +
+      ownerSelect(a.owner) +
       text('deadline', 'Prazo', a.deadline, { type: 'date' }) +
       select('priority', 'Prioridade', a.priority, priorityOpts()) +
       select('status', 'Status', a.status, statusOpts()) +
@@ -403,32 +421,8 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Pessoas e Valores
+  // Valores (MVV)
   // ---------------------------------------------------------------------------
-
-  /** Formulário de responsável (pessoa ou área). */
-  function editPerson(p) {
-    const isNew = !p;
-    p = p || { name: '', role: '', color: S.PERSON_COLORS[S.state.people.length % S.PERSON_COLORS.length] };
-    U.openDrawer({
-      title: isNew ? 'Novo responsável' : 'Editar responsável',
-      subtitle: 'Pessoas ou áreas que podem assumir objetivos, KRs e planos.',
-      submitLabel: isNew ? 'Adicionar' : 'Salvar',
-      body: grid(
-        text('name', 'Nome', p.name, { required: true, full: true, placeholder: 'Ex.: Marina, ou Comercial' }) +
-        text('role', 'Função / área', p.role, { full: true, placeholder: 'Ex.: Fotógrafa líder' }) +
-        '<div class="field full"><span class="label">Cor do avatar</span><div class="swatches">' +
-        S.PERSON_COLORS.map((c) => '<label><input type="radio" name="color" value="' + c + '"' + (c === p.color ? ' checked' : '') + '><span style="background:' + c + '"></span></label>').join('') +
-        '</div></div>'
-      ),
-      onDelete: isNew ? null : () => U.confirmDelete('Remover responsável?', 'Os itens atribuídos a ' + p.name + ' ficarão sem responsável.',
-        () => removeWithUndo('people', p.id, 'Responsável removido')),
-      onSubmit: (form) => {
-        S.upsert('people', Object.assign(isNew ? {} : { id: p.id }, values(form)));
-        U.toast(isNew ? 'Responsável adicionado' : 'Responsável atualizado');
-      },
-    });
-  }
 
   /**
    * Formulário de valor da empresa (MVV).
@@ -463,5 +457,5 @@
     });
   }
 
-  window.Forms = { editObjective, editKR, editKPI, editAction, editPerson, editValue, recordMeasurement, removeWithUndo };
+  window.Forms = { editObjective, editKR, editKPI, editAction, editValue, recordMeasurement, removeWithUndo };
 })();
