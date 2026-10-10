@@ -28,6 +28,23 @@
    * (ver upgradeStrategy). 2 = OKRs definidos no quadro em out/2026.
    */
   const SEED_VERSION = 2;
+  /**
+   * Versão da base de referência em snapshot.js (window.VISTA_SNAPSHOT).
+   * Ao incrementar, todos os navegadores recebem o conteúdo do snapshot uma vez.
+   * 1 = versão exportada do navegador da equipe em 10/10/2026.
+   */
+  const SNAPSHOT_VERSION = 1;
+
+  /**
+   * Objetivos, KRs, indicadores e planos de referência (cópia), ou null se
+   * snapshot.js não foi carregado.
+   * @returns {{objectives:object[],krs:object[],kpis:object[],actions:object[]}|null}
+   */
+  function snapshotData() {
+    const snap = typeof window !== 'undefined' && window.VISTA_SNAPSHOT;
+    return snap ? clone(snap) : null;
+  }
+
   /** Cópia de segurança do estado anterior à troca de OKRs iniciais. */
   const BACKUP_KEY = 'vista-strategy-backup-before-seed-' + SEED_VERSION;
 
@@ -286,8 +303,9 @@
       mvv: officialMvv(),
       mvvVersion: MVV_VERSION,
       actionsVersion: ACTIONS_VERSION,
+      snapshotVersion: SNAPSHOT_VERSION,
       people,
-    }, strategySeed());
+    }, snapshotData() || strategySeed());
   }
 
   // ---------------------------------------------------------------------------
@@ -418,6 +436,17 @@
       if (!krs.has(a.krId)) { a.krId = ''; a.objectiveId = ''; }
       boot.state.actions.push(a);
     });
+    boot.state.actionsVersion = ACTIONS_VERSION;
+  }
+  // aplica a base de referência uma vez por versão (substitui OKRs, indicadores e planos)
+  if (boot.state && !(boot.state.snapshotVersion >= SNAPSHOT_VERSION)) {
+    const snap = snapshotData();
+    if (snap) {
+      writeLS(BACKUP_KEY.replace('seed', 'snapshot'), boot.state); // cópia do que havia neste navegador
+      Object.assign(boot.state, snap);
+      normalize(boot.state);
+    }
+    boot.state.snapshotVersion = SNAPSHOT_VERSION;
     boot.state.actionsVersion = ACTIONS_VERSION;
   }
   let state = boot.state || seed();
