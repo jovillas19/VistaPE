@@ -160,9 +160,25 @@
       'Mapear 50 corretores',
       'Entrar em contato com 20 administradores de Airbnb',
     ],
+    // Objetivo 2 — KR "Conseguir 10 clientes na carteira em SSA"
+    kr_o2_1: [
+      'Montar 1 apresentação comercial base',
+      'Montar CRM',
+      'Entrar em contato com 20 administradores de Airbnb',
+      'Entrar em contato com 30 imobiliárias',
+      'Entrar em contato com 50 corretores',
+      'Entrar em contato com 20 hotéis/pousadas',
+    ],
+    // Objetivo 2 — KR "Capacitar 1 fotógrafo em SSA"
+    kr_o2_2: [
+      'Mapear 5 fotógrafos',
+      'Apresentar proposta para 5 fotógrafos',
+      'Disponibilizar 3 residências para treino',
+      'Coletar 5 feedbacks',
+    ],
   };
-  /** Versão da lista oficial de planos; ao incrementar, os novos chegam a todos os navegadores. */
-  const ACTIONS_VERSION = 1;
+  /** Versão da lista oficial de planos; ao incrementar, os novos chegam a todos os navegadores. 2 = planos do Objetivo 2. */
+  const ACTIONS_VERSION = 2;
 
   /**
    * Planos oficiais no formato do estado. Ids estáveis ("pa_<kr>_<n>")

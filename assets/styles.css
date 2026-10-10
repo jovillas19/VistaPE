@@ -667,13 +667,14 @@ svg { flex-shrink: 0; }
 .filters .select { height: 36px; width: auto; min-width: 150px; max-width: 240px; text-overflow: ellipsis; font-size: 13px; padding-right: 30px; }
 .filters .clear { font-size: 12.5px; }
 /* cabeçalhos de grupo da tabela de planos (Objetivo → KR) */
-.table .grp-obj td { padding: 16px 14px 10px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
-.table .grp-obj td { font-family: var(--font-display); font-size: 14px; }
-.table .grp-obj .obj-dot { display: inline-block; vertical-align: middle; margin-right: 10px; }
-.table .grp-obj .eyebrow { margin-right: 10px; font-family: var(--font-mono); }
-.table .grp-kr td { padding: 12px 14px 8px; font-size: 12.5px; font-weight: 600; color: var(--text-2); border-bottom: 1px solid var(--border); }
-.table .grp-kr td > span:first-child .mono { color: var(--accent-text); font-size: 11px; margin-right: 6px; }
-.table .grp-kr .n { margin-left: 8px; font-family: var(--font-mono); font-weight: 500; color: var(--text-3); }
+/* Hierarquia: Objetivo > KR > plano. Títulos de grupo maiores e mais
+   fortes que as linhas de plano, que ficam em peso regular. */
+.table .grp-obj td { padding: 22px 16px 12px; background: var(--accent-soft); border-bottom: 1px solid var(--border-strong); font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text); }
+.table .grp-obj .obj-dot { display: inline-block; vertical-align: middle; margin-right: 12px; width: 12px; height: 12px; }
+.table .grp-obj .eyebrow { margin-right: 12px; font-family: var(--font-mono); font-size: 11px; }
+.table .grp-kr td { padding: 16px 16px 10px 40px; font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--text); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+.table .grp-kr .mono { color: var(--accent-text); font-size: 12px; margin-right: 8px; }
+.table tr[data-act] .title-cell { font-weight: 500; font-size: 13.5px; color: var(--text-2); padding-left: 40px; }
 .table tbody tr.grp-obj:hover, .table tbody tr.grp-kr:hover { background: transparent; }
 .acard-kr { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-3); min-width: 0; }
 .acard-kr span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
